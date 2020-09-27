@@ -1,0 +1,23 @@
+.mat-card {
+  margin: 16px;
+  position: -webkit-sticky; /* Safari */
+  position: sticky;
+  top: 64px;
+}
+
+#book-form {
+  width: 100%;
+}
+
+.full-width-form-field {
+  width: 100%;
+}
+
+#authors-label {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+#form-button-container {
+  text-align: right;
+}

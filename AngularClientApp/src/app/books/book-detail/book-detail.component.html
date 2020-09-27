@@ -1,0 +1,48 @@
+<mat-card *ngIf="bookDetail">
+
+    <form id="book-form" [formGroup]="bookForm" (ngSubmit)="onSubmit()">
+        <mat-form-field class="full-width-form-field">
+            <mat-label>Title</mat-label>
+            <input matInput placeholder="Add the book title" formControlName="title">
+        </mat-form-field>
+
+        <mat-form-field class="full-width-form-field">
+            <mat-label>Description</mat-label>
+            <textarea matInput placeholder="Add a short description" formControlName="description"></textarea>
+        </mat-form-field>
+
+        <mat-form-field>
+            <mat-label>Publish Date</mat-label>
+            <input matInput [matDatepicker]="picker" formControlName="publishDate">
+            <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+
+        <div formArrayName="authors">
+            <div id="authors-label">Authors
+                <button type="button" mat-icon-button (click)="addAuthor()" color="primary">
+                    <mat-icon>add_circle_outline
+                    </mat-icon>
+                </button>
+            </div>
+
+            <div *ngFor="let author of authorsFormArray.controls; let i=index">
+                <mat-form-field>
+                    <input (keydown.enter)="$event.target.blur()" matInput [formControlName]="i"
+                        (blur)="onAuthorBlur(i)">
+                </mat-form-field>
+                <button type="button" mat-icon-button (click)="removeAuthor(i)" color="warn">
+                    <mat-icon>clear</mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <div id="form-button-container">
+            <button mat-button (click)="resetForm()" [disabled]="bookForm.pristine">Reset</button>
+            <button mat-button color="primary" type="submit" [disabled]="!bookForm.valid || bookForm.pristine">
+                Save changes
+            </button>
+        </div>
+    </form>
+
+</mat-card>

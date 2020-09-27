@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using DotNetCoreWebAPI.DataStores;
+
 namespace DotNetCoreWebAPI
 {
     public class Startup
@@ -25,7 +27,19 @@ namespace DotNetCoreWebAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+
+            services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(
+                    builder =>
+                    {
+                        builder.AllowAnyMethod().AllowAnyHeader().WithOrigins("http://localhost:4200");
+                    });
+            });
+
             services.AddControllers();
+
+            services.AddScoped<BookStore>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -36,11 +50,9 @@ namespace DotNetCoreWebAPI
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
-
             app.UseRouting();
 
-            app.UseAuthorization();
+            app.UseCors();
 
             app.UseEndpoints(endpoints =>
             {

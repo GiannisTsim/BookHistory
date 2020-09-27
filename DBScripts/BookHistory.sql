@@ -17,10 +17,15 @@ USE BookHistory
 GO
 
 
--- #######################################################
--- ##                   Tables                          ##
--- #######################################################
 
+DROP PROCEDURE IF EXISTS Book_Modify_tr;
+GO
+DROP PROCEDURE IF EXISTS BookAuthor_Add_tr;
+GO
+DROP PROCEDURE IF EXISTS BookAuthor_Drop_tr;
+GO
+DROP TYPE IF EXISTS AuthorTableType 
+GO
 DROP TABLE IF EXISTS BookAuthorHistory;
 DROP TABLE IF EXISTS BookHistoryPublishDate;
 DROP TABLE IF EXISTS BookHistoryDescription;
@@ -30,6 +35,11 @@ DROP TABLE IF EXISTS BookAuthor;
 DROP TABLE IF EXISTS Author;
 DROP TABLE IF EXISTS Book;
 GO
+
+-- #######################################################
+-- ##                   Tables                          ##
+-- #######################################################
+
 
 CREATE TABLE Book
 (
@@ -163,34 +173,27 @@ GO
 
 
 -- #######################################################
+-- ##                   Types                           ##
+-- #######################################################
+
+CREATE TYPE AuthorTableType 
+    AS TABLE (
+    Author NVARCHAR(100)
+    );
+GO
+
+-- #######################################################
 -- ##                   API                             ##
 -- #######################################################
 
-DROP PROCEDURE IF EXISTS Book_Add_tr;
-GO
-CREATE PROCEDURE Book_Add_tr
-    @Title NVARCHAR(100),
-    @Description NVARCHAR(256),
-    @PublishDate DATE
-AS
-SET NOCOUNT ON;
-BEGIN TRANSACTION
-
-INSERT INTO Book
-VALUES
-    (@Title, @Description, @PublishDate, CURRENT_TIMESTAMP);
-
-COMMIT
-GO
 
 
-DROP PROCEDURE IF EXISTS Book_Modify_tr;
-GO
-CREATE PROCEDURE Book_Modify_tr
+CREATE OR ALTER PROCEDURE Book_Modify_tr
     @BookId INT,
     @NewTitle NVARCHAR(100),
     @NewDescription NVARCHAR(256),
-    @NewPublishDate DATE
+    @NewPublishDate DATE,
+    @NewAuthors AUTHORTABLETYPE READONLY
 AS
 SET NOCOUNT ON;
 BEGIN TRANSACTION
@@ -198,7 +201,10 @@ BEGIN TRANSACTION
 DECLARE @Title NVARCHAR(100),
         @Description NVARCHAR(256),
         @PublishDate DATE,
-        @UpdatedDtm DATETIME;
+        @UpdatedDtm DATETIME,
+        @AuditedDtm DATETIME;
+
+SET @AuditedDtm = CURRENT_TIMESTAMP;
 
 -- Get current properties of Book with @BookId
 SELECT
@@ -214,9 +220,6 @@ WHERE
 -- If any of the properties is changed, create a BookHistory and a non-exclusive subtype record for each changed property
 IF (@NewTitle <> @Title OR @NewDescription <> @Description OR @NewPublishDate <> @PublishDate)
     BEGIN
-
-    DECLARE @AuditedDtm DATETIME;
-    SET @AuditedDtm = CURRENT_TIMESTAMP;
 
     INSERT INTO BookHistory
         (BookId, AuditedDtm, UpdatedDtm)
@@ -252,12 +255,92 @@ IF (@NewTitle <> @Title OR @NewDescription <> @Description OR @NewPublishDate <>
         BookId = @BookId;
 
 END
+
+-- Insert new Authors
+INSERT INTO Author
+    (Author)
+SELECT
+    Author
+FROM
+    @NewAuthors
+WHERE 
+    Author NOT IN (
+    SELECT
+    Author
+FROM
+    Author
+    );
+
+-- Insert new BookAuthors
+INSERT INTO BookAuthor
+    (BookId, Author, IsObsolete, UpdatedDtm)
+SELECT
+    @BookId,
+    Author,
+    0,
+    @AuditedDtm
+FROM
+    @NewAuthors
+WHERE
+    Author NOT IN (
+        SELECT
+    Author
+FROM
+    BookAuthor
+WHERE BookId=@BookId
+    );
+
+-- Insert new BookHistory
+INSERT INTO BookAuthorHistory
+    (BookId, Author, AuditedDtm, IsObsolete, UpdatedDtm)
+SELECT
+    BookId,
+    Author,
+    @AuditedDtm,
+    IsObsolete,
+    UpdatedDtm
+FROM
+    BookAuthor
+WHERE 
+        BookId = @BookId AND
+    ((Author IN (SELECT
+        *
+    FROM
+        @NewAuthors) AND IsObsolete = 1)
+    OR
+    (Author NOT IN (SELECT
+        *
+    FROM
+        @NewAuthors) AND IsObsolete = 0))
+
+-- Restore BookAuthors
+UPDATE BookAuthor
+    SET IsObsolete=0,
+        UpdatedDtm = @AuditedDtm
+    WHERE BookId=@BookId
+    AND Author IN (
+        SELECT
+        Author
+    FROM
+        @NewAuthors)
+    AND IsObsolete = 1;
+
+--Soft-delete BookAuthors
+UPDATE BookAuthor
+    SET IsObsolete=1,
+        UpdatedDtm = @AuditedDtm
+    WHERE BookId=@BookId
+    AND Author NOT IN (
+        SELECT
+        Author
+    FROM
+        @NewAuthors)
+    AND IsObsolete = 0;
+
 COMMIT
 GO
 
 
-DROP PROCEDURE IF EXISTS BookAuthor_Add_tr;
-GO
 CREATE PROCEDURE BookAuthor_Add_tr
     @BookId INT,
     @Author NVARCHAR(100)
@@ -319,8 +402,6 @@ COMMIT
 GO
 
 
-DROP PROCEDURE IF EXISTS BookAuthor_Drop_tr;
-GO
 CREATE PROCEDURE BookAuthor_Drop_tr
     @BookId INT,
     @Author NVARCHAR(100)
@@ -399,6 +480,7 @@ GRANT EXECUTE ON Book_Modify_tr TO BookHistoryRole;
 GRANT EXECUTE ON BookAuthor_Add_tr TO BookHistoryRole;
 GRANT EXECUTE ON BookAuthor_Drop_tr TO BookHistoryRole;
 GRANT SELECT ON SCHEMA::dbo TO BookHistoryRole;
+GRANT EXECUTE ON TYPE::AuthorTableType TO BookHistoryRole;
 
 CREATE LOGIN BookHistoryWebClient WITH PASSWORD = 'testpassword';
 CREATE USER BookHistoryWebClient FOR LOGIN BookHistoryWebClient;

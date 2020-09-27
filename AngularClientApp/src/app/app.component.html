@@ -1,1 +1,10 @@
+<nav mat-tab-nav-bar mat-align-tabs="center" disableRipple>
+  <a mat-tab-link routerLink="/books" routerLinkActive #rlaBooks="routerLinkActive" [active]="rlaBooks.isActive">
+    Books
+  </a>
+  <a mat-tab-link routerLink="/history" routerLinkActive #rlaHistory="routerLinkActive" [active]="rlaHistory.isActive">
+    History
+  </a>
+</nav>
+
 <router-outlet></router-outlet>

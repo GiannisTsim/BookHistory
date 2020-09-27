@@ -1,0 +1,15 @@
+<div id="books-container">
+
+    <mat-nav-list dense id="book-list">
+        <mat-list-item *ngFor="let book of books" [routerLink]="['/books', book.bookId]" routerLinkActive
+            #rla="routerLinkActive" [class.book-list-item-active]="rla.isActive">
+            <h3 matLine> {{book.title}}</h3>
+            <p matLine>
+                <span> {{book.publishDate | date}} </span>
+            </p>
+        </mat-list-item>
+    </mat-nav-list>
+
+    <router-outlet></router-outlet>
+
+</div>

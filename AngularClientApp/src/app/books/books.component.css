@@ -1,0 +1,9 @@
+#books-container {
+  display: flex;
+  flex-direction: row;
+}
+
+#book-list {
+  max-width: 25%;
+  text-overflow: ellipsis;
+}
