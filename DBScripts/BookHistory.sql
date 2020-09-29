@@ -210,41 +210,83 @@ GO
 
 CREATE OR ALTER VIEW BookHistoryTitle_V
 AS
-SELECT Book.BookId, Book.UpdatedDtm,  1 AS HistoryType, Book.Title AS Change
-FROM Book INNER JOIN BookHistoryTitle ON Book.BookId = BookHistoryTitle.BookId AND Book.UpdatedDtm = BookHistoryTitle.AuditedDtm
-UNION  
-SELECT BookHistory.BookId, UpdatedDtm, 1 AS HistoryType, BookHistoryTitle.Title AS Change 
-FROM BookHistory INNER JOIN BookHistoryTitle ON BookHistory.BookId = BookHistoryTitle.BookId AND BookHistory.AuditedDtm = BookHistoryTitle.AuditedDtm
+SELECT * FROM (
+    SELECT  B.BookId, 
+            ( SELECT MAX(AuditedDtm) FROM BookHistoryTitle WHERE B.BookId = BookId ) AS UpdatedDtm,  
+            1 AS HistoryType, 
+            B.Title AS Change
+    FROM Book AS B
+    UNION  
+    SELECT  BHT.BookId, 
+            ( SELECT MAX(AuditedDtm) FROM BookHistoryTitle WHERE BHT.BookId = BookId AND BHT.AuditedDtm > AuditedDtm ) AS UpdatedDtm, 
+            1 AS HistoryType, 
+            BHT.Title AS Change 
+    FROM BookHistoryTitle AS BHT
+    ) AS HT
+WHERE HT.UpdatedDtm IS NOT NULL
 GO
 
 
 CREATE OR ALTER VIEW BookHistoryDescription_V
 AS
-SELECT Book.BookId, Book.UpdatedDtm,  2 AS HistoryType, Book.Description AS Change
-FROM Book INNER JOIN BookHistoryDescription ON Book.BookId = BookHistoryDescription.BookId AND Book.UpdatedDtm = BookHistoryDescription.AuditedDtm
-UNION  
-SELECT BookHistory.BookId, UpdatedDtm, 2 AS HistoryType, BookHistoryDescription.Description AS Change 
-FROM BookHistory INNER JOIN BookHistoryDescription ON BookHistory.BookId = BookHistoryDescription.BookId AND BookHistory.AuditedDtm = BookHistoryDescription.AuditedDtm
+SELECT * FROM (
+    SELECT  B.BookId, 
+            ( SELECT MAX(AuditedDtm) FROM BookHistoryDescription WHERE B.BookId = BookId ) AS UpdatedDtm,  
+            2 AS HistoryType, 
+            B.Description AS Change
+    FROM Book AS B
+    UNION  
+    SELECT  BHD.BookId, 
+            ( SELECT MAX(AuditedDtm) FROM BookHistoryDescription WHERE BHD.BookId = BookId AND BHD.AuditedDtm > AuditedDtm ) AS UpdatedDtm, 
+            2 AS HistoryType, 
+            BHD.Description AS Change 
+    FROM BookHistoryDescription AS BHD
+    ) AS HD
+WHERE HD.UpdatedDtm IS NOT NULL
 GO
 
 
 CREATE OR ALTER VIEW BookHistoryPublishDate_V
 AS
-SELECT Book.BookId, Book.UpdatedDtm,  3 AS HistoryType, CAST(Book.PublishDate AS NVARCHAR) AS Change
-FROM Book INNER JOIN BookHistoryPublishDate ON Book.BookId = BookHistoryPublishDate.BookId AND Book.UpdatedDtm = BookHistoryPublishDate.AuditedDtm
-UNION  
-SELECT BookHistory.BookId, UpdatedDtm, 3 AS HistoryType, CAST(BookHistoryPublishDate.PublishDate AS NVARCHAR) AS Change 
-FROM BookHistory INNER JOIN BookHistoryPublishDate ON BookHistory.BookId = BookHistoryPublishDate.BookId AND BookHistory.AuditedDtm = BookHistoryPublishDate.AuditedDtm
+SELECT * FROM (
+    SELECT  B.BookId, 
+            ( SELECT MAX(AuditedDtm) FROM BookHistoryPublishDate WHERE B.BookId = BookId ) AS UpdatedDtm,  
+            3 AS HistoryType, 
+            CAST(B.PublishDate AS NVARCHAR) AS Change
+    FROM Book AS B
+    UNION  
+    SELECT  BHPD.BookId, 
+            ( SELECT MAX(AuditedDtm) FROM BookHistoryPublishDate WHERE BHPD.BookId = BookId AND BHPD.AuditedDtm > AuditedDtm ) AS UpdatedDtm, 
+            3 AS HistoryType, 
+            CAST(BHPD.PublishDate AS NVARCHAR) AS Change 
+    FROM BookHistoryPublishDate AS BHPD
+    ) AS HPD
+WHERE HPD.UpdatedDtm IS NOT NULL
 GO
 
 
 CREATE OR ALTER VIEW BookAuthorHistoryAdd_V
 AS
-SELECT BookId, UpdatedDtm,  4 AS HistoryType, Author AS Change
-FROM BookAuthor WHERE IsObsolete = 0
+-- Not obsolete Authors added again after they have been removed
+SELECT BookAuthor.BookId, BookAuthor.UpdatedDtm,  4 AS HistoryType, BookAuthor.Author AS Change
+FROM BookAuthor INNER JOIN BookAuthorHistory ON BookAuthor.BookId = BookAuthorHistory.BookId AND BookAuthor.Author = BookAuthorHistory.Author AND BookAuthor.UpdatedDtm = BookAuthorHistory.AuditedDtm
+WHERE BookAuthor.IsObsolete = 0
 UNION  
+-- Previous Author additions for Authors that are currently obsolete, excluding initial Authors
 SELECT BookId, UpdatedDtm, 4 AS HistoryType, Author AS Change 
-FROM BookAuthorHistory WHERE IsObsolete = 0
+FROM BookAuthorHistory AS BAH 
+WHERE IsObsolete = 0 
+AND EXISTS (SELECT 1 FROM BookAuthorHistory WHERE BookId = BAH.BookId AND Author = BAH.Author AND AuditedDtm = BAH.UpdatedDtm AND IsObsolete = 1)
+UNION
+-- Authors added after initial insert, that have not been removed until now
+SELECT BookId, UpdatedDtm, 4 AS HistoryType, Author AS Change 
+FROM BookAuthor AS BA
+WHERE IsObsolete = 0 
+AND (
+    UpdatedDtm > (SELECT UpdatedDtm FROM Book WHERE BookId = BA.BookId)
+    OR
+    UpdatedDtm > (SELECT MIN(UpdatedDtm) FROM BookHistory WHERE BookId = BA.BookId)
+    )
 GO
 
 
@@ -338,7 +380,7 @@ SELECT  @BookId, Author, 0, @AuditedDtm
 FROM    @NewAuthors
 WHERE   Author NOT IN ( SELECT Author FROM BookAuthor WHERE BookId=@BookId );
 
--- Insert new BookHistory
+-- Insert new BookAuthorHistory
 INSERT INTO BookAuthorHistory 
         (BookId, Author, AuditedDtm, IsObsolete, UpdatedDtm)
 SELECT 
@@ -430,6 +472,8 @@ GO
 -- ##                   Seeds                           ##
 -- #######################################################
 
+DECLARE @CreatedDtm DATETIME = CURRENT_TIMESTAMP;
+
 INSERT INTO Author
     (Author)
 VALUES
@@ -458,159 +502,159 @@ VALUES
 
 INSERT INTO Book
 VALUES
-    ('The Hunger Games', '...', CONVERT(DATE,'2008'), CURRENT_TIMESTAMP);
+    ('The Hunger Games', '...', CONVERT(DATE,'2008'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Suzanne Collins', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Suzanne Collins', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Harry Potter and the Philosopher''s Stone', '...', CONVERT(DATE,'1997'), CURRENT_TIMESTAMP);
+    ('Harry Potter and the Philosopher''s Stone', '...', CONVERT(DATE,'1997'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'J.K. Rowling', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Mary GrandPré', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'J.K. Rowling', 0, @CreatedDtm),
+    (@@IDENTITY, 'Mary GrandPré', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Twilight', '...', CONVERT(DATE,'2005'), CURRENT_TIMESTAMP);
+    ('Twilight', '...', CONVERT(DATE,'2005'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Stephenie Meyer', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Stephenie Meyer', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('To Kill a Mockingbird', '...', CONVERT(DATE,'1960'), CURRENT_TIMESTAMP);
+    ('To Kill a Mockingbird', '...', CONVERT(DATE,'1960'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Harper Lee', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Harper Lee', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('The Great Gatsby', '...', CONVERT(DATE,'1925'), CURRENT_TIMESTAMP);
+    ('The Great Gatsby', '...', CONVERT(DATE,'1925'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'F. Scott Fitzgerald', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'F. Scott Fitzgerald', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('The Fault in Our Stars', '...', CONVERT(DATE,'2012'), CURRENT_TIMESTAMP);
+    ('The Fault in Our Stars', '...', CONVERT(DATE,'2012'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'John Green', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'John Green', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('The Hobbit or There and Back Again', '...', CONVERT(DATE,'1937'), CURRENT_TIMESTAMP);
+    ('The Hobbit or There and Back Again', '...', CONVERT(DATE,'1937'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'J.R.R. Tolkien', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'J.R.R. Tolkien', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('The Catcher in the Rye', '...', CONVERT(DATE,'1951'), CURRENT_TIMESTAMP);
+    ('The Catcher in the Rye', '...', CONVERT(DATE,'1951'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'J.D. Salinger', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'J.D. Salinger', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Angels & Demons', '...', CONVERT(DATE,'2000'), CURRENT_TIMESTAMP);
+    ('Angels & Demons', '...', CONVERT(DATE,'2000'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Dan Brown', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Dan Brown', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Pride and Prejudice', '...', CONVERT(DATE,'1813'), CURRENT_TIMESTAMP);
+    ('Pride and Prejudice', '...', CONVERT(DATE,'1813'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Jane Austen', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Jane Austen', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('The Kite Runner', '...', CONVERT(DATE,'2003'), CURRENT_TIMESTAMP);
+    ('The Kite Runner', '...', CONVERT(DATE,'2003'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Khaled Hosseini', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Khaled Hosseini', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Divergent', '...', CONVERT(DATE,'2011'), CURRENT_TIMESTAMP);
+    ('Divergent', '...', CONVERT(DATE,'2011'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Veronica Roth', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Veronica Roth', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Nineteen Eighty-Four', '...', CONVERT(DATE,'1949'), CURRENT_TIMESTAMP);
+    ('Nineteen Eighty-Four', '...', CONVERT(DATE,'1949'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'George Orwell', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Erich Fromm', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Celâl Üster', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'George Orwell', 0, @CreatedDtm),
+    (@@IDENTITY, 'Erich Fromm', 0, @CreatedDtm),
+    (@@IDENTITY, 'Celâl Üster', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Animal Farm: A Fairy Story', '...', CONVERT(DATE,'1945'), CURRENT_TIMESTAMP);
+    ('Animal Farm: A Fairy Story', '...', CONVERT(DATE,'1945'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'George Orwell', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'George Orwell', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Het Achterhuis: Dagboekbrieven 14 juni 1942 - 1 augustus 1944', '...', CONVERT(DATE,'1947'), CURRENT_TIMESTAMP);
+    ('Het Achterhuis: Dagboekbrieven 14 juni 1942 - 1 augustus 1944', '...', CONVERT(DATE,'1947'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Anne Frank', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Eleanor Roosevelt', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'B.M. Mooyaart-Doubleday', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Anne Frank', 0, @CreatedDtm),
+    (@@IDENTITY, 'Eleanor Roosevelt', 0, @CreatedDtm),
+    (@@IDENTITY, 'B.M. Mooyaart-Doubleday', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Män som hatar kvinnor', '...', CONVERT(DATE,'2005'), CURRENT_TIMESTAMP);
+    ('Män som hatar kvinnor', '...', CONVERT(DATE,'2005'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Stieg Larsson', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Reg Keeland', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Stieg Larsson', 0, @CreatedDtm),
+    (@@IDENTITY, 'Reg Keeland', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Catching Fire', '...', CONVERT(DATE,'2009'), CURRENT_TIMESTAMP);
+    ('Catching Fire', '...', CONVERT(DATE,'2009'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Suzanne Collins', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Suzanne Collins', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Harry Potter and the Prisoner of Azkaban', '...', CONVERT(DATE,'1999'), CURRENT_TIMESTAMP);
+    ('Harry Potter and the Prisoner of Azkaban', '...', CONVERT(DATE,'1999'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'J.K. Rowling', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Mary GrandPré', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Rufus Beck', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'J.K. Rowling', 0, @CreatedDtm),
+    (@@IDENTITY, 'Mary GrandPré', 0, @CreatedDtm),
+    (@@IDENTITY, 'Rufus Beck', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('The Fellowship of the Ring', '...', CONVERT(DATE,'1954'), CURRENT_TIMESTAMP);
+    ('The Fellowship of the Ring', '...', CONVERT(DATE,'1954'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'J.R.R. Tolkien', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'J.R.R. Tolkien', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Mockingjay', '...', CONVERT(DATE,'2010'), CURRENT_TIMESTAMP);
+    ('Mockingjay', '...', CONVERT(DATE,'2010'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'Suzanne Collins', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'Suzanne Collins', 0, @CreatedDtm);
 
 INSERT INTO Book
 VALUES
-    ('Harry Potter and the Order of the Phoenix', '...', CONVERT(DATE,'2003'), CURRENT_TIMESTAMP);
+    ('Harry Potter and the Order of the Phoenix', '...', CONVERT(DATE,'2003'), @CreatedDtm);
 INSERT INTO BookAuthor
 VALUES
-    (@@IDENTITY, 'J.K. Rowling', 0, CURRENT_TIMESTAMP),
-    (@@IDENTITY, 'Mary GrandPré', 0, CURRENT_TIMESTAMP);
+    (@@IDENTITY, 'J.K. Rowling', 0, @CreatedDtm),
+    (@@IDENTITY, 'Mary GrandPré', 0, @CreatedDtm);
 
 
 

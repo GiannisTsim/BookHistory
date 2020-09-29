@@ -35,23 +35,17 @@ namespace DotNetCoreWebAPI.DataStores
             await connection.OpenAsync();
            
             var bookDetail = await connection.QuerySingleOrDefaultAsync<BookDetail>(
-                @"  SELECT 
-                        *
-                    FROM 
-                        Book 
-                    WHERE
-                        BookId = @BookId",
+                @"  SELECT * FROM Book 
+                    WHERE BookId = @BookId",
                 new { BookId = bookId }
                 );
             if (bookDetail != null)
             {
                 var authors = await connection.QueryAsync<string>(
-                    @"  SELECT 
-                            Author 
-                        FROM 
-                            BookAuthor 
-                        WHERE
-                           BookId = @BookId",
+                    @"  SELECT Author 
+                        FROM BookAuthor 
+                        WHERE BookId = @BookId 
+                        AND IsObsolete = 0",
                     new { BookId = bookId }
                     );
 
