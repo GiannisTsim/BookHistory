@@ -1,0 +1,26 @@
+<div id="side-configuration-panel">
+
+    <div>Filter by change type</div>
+    <mat-selection-list dense>
+        <mat-list-option [value]="historyType.Title">
+            Title
+        </mat-list-option>
+        <mat-list-option [value]="historyType.Description">
+            Description
+        </mat-list-option>
+        <mat-list-option [value]="historyType.PublishDate">
+            Publish date
+        </mat-list-option>
+        <mat-list-option [value]="historyType.AuthorAdd">
+            Author addition
+        </mat-list-option>
+        <mat-list-option [value]="historyType.AuthorDrop">
+            Author removal
+        </mat-list-option>
+    </mat-selection-list>
+
+    <mat-slide-toggle>Group by change type</mat-slide-toggle>
+
+    <button mat-flat-button color="primary">Search</button>
+
+</div>

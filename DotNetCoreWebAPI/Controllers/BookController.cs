@@ -30,7 +30,7 @@ namespace DotNetCoreWebAPI
         }
 
         [HttpGet("api/books/{bookId}")]
-        public async Task<ActionResult<BookDetail>> GetBookDetail(int bookId)
+        public async Task<ActionResult<BookDetail>> GetBookDetail([FromRoute] int bookId)
         {
             BookDetail bookDetail = await _bookStore.FindDetailAsync(bookId);
             if (bookDetail != null)
@@ -41,7 +41,7 @@ namespace DotNetCoreWebAPI
         }
 
         [HttpPut("api/books/{bookId}")]
-        public async Task<ActionResult> EditBook(int bookId, [FromBody] BookDetail bookDetail)
+        public async Task<ActionResult> EditBook([FromRoute] int bookId, [FromBody] BookDetail bookDetail)
         {
             await _bookStore.UpdateAsync(bookId, bookDetail);
             return Ok();

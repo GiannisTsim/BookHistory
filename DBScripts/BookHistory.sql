@@ -19,13 +19,20 @@ GO
 
 
 DROP PROCEDURE IF EXISTS Book_Modify_tr;
+DROP PROCEDURE IF EXISTS BookHistory_Search;
 GO
-DROP PROCEDURE IF EXISTS BookAuthor_Add_tr;
+
+DROP TYPE IF EXISTS AuthorTableType; 
+DROP TYPE IF EXISTS HistoryTypeTableType;
 GO
-DROP PROCEDURE IF EXISTS BookAuthor_Drop_tr;
+
+DROP VIEW IF EXISTS BookHistoryTitle_V;
+DROP VIEW IF EXISTS BookHistoryDescription_V;
+DROP VIEW IF EXISTS BookHistoryPublishDate_V;
+DROP VIEW IF EXISTS BookAuthorHistoryAdd_V;
+DROP VIEW IF EXISTS BookAuthorHistoryDrop_V;
 GO
-DROP TYPE IF EXISTS AuthorTableType 
-GO
+
 DROP TABLE IF EXISTS BookAuthorHistory;
 DROP TABLE IF EXISTS BookHistoryPublishDate;
 DROP TABLE IF EXISTS BookHistoryDescription;
@@ -182,10 +189,78 @@ CREATE TYPE AuthorTableType
     );
 GO
 
+CREATE TYPE HistoryTypeTableType 
+    AS TABLE (
+    HistoryType INT
+    );
+GO
+
+
+
+-- #######################################################
+-- ##                   Views                           ##
+-- #######################################################
+
+-- Change Codes:
+--  Title           : 1
+--  Description     : 2
+--  PublishDate     : 3
+--  Author Add      : 4
+--  Author Drop     : 5
+
+CREATE OR ALTER VIEW BookHistoryTitle_V
+AS
+SELECT Book.BookId, Book.UpdatedDtm,  1 AS HistoryType, Book.Title AS Change
+FROM Book INNER JOIN BookHistoryTitle ON Book.BookId = BookHistoryTitle.BookId AND Book.UpdatedDtm = BookHistoryTitle.AuditedDtm
+UNION  
+SELECT BookHistory.BookId, UpdatedDtm, 1 AS HistoryType, BookHistoryTitle.Title AS Change 
+FROM BookHistory INNER JOIN BookHistoryTitle ON BookHistory.BookId = BookHistoryTitle.BookId AND BookHistory.AuditedDtm = BookHistoryTitle.AuditedDtm
+GO
+
+
+CREATE OR ALTER VIEW BookHistoryDescription_V
+AS
+SELECT Book.BookId, Book.UpdatedDtm,  2 AS HistoryType, Book.Description AS Change
+FROM Book INNER JOIN BookHistoryDescription ON Book.BookId = BookHistoryDescription.BookId AND Book.UpdatedDtm = BookHistoryDescription.AuditedDtm
+UNION  
+SELECT BookHistory.BookId, UpdatedDtm, 2 AS HistoryType, BookHistoryDescription.Description AS Change 
+FROM BookHistory INNER JOIN BookHistoryDescription ON BookHistory.BookId = BookHistoryDescription.BookId AND BookHistory.AuditedDtm = BookHistoryDescription.AuditedDtm
+GO
+
+
+CREATE OR ALTER VIEW BookHistoryPublishDate_V
+AS
+SELECT Book.BookId, Book.UpdatedDtm,  3 AS HistoryType, CAST(Book.PublishDate AS NVARCHAR) AS Change
+FROM Book INNER JOIN BookHistoryPublishDate ON Book.BookId = BookHistoryPublishDate.BookId AND Book.UpdatedDtm = BookHistoryPublishDate.AuditedDtm
+UNION  
+SELECT BookHistory.BookId, UpdatedDtm, 3 AS HistoryType, CAST(BookHistoryPublishDate.PublishDate AS NVARCHAR) AS Change 
+FROM BookHistory INNER JOIN BookHistoryPublishDate ON BookHistory.BookId = BookHistoryPublishDate.BookId AND BookHistory.AuditedDtm = BookHistoryPublishDate.AuditedDtm
+GO
+
+
+CREATE OR ALTER VIEW BookAuthorHistoryAdd_V
+AS
+SELECT BookId, UpdatedDtm,  4 AS HistoryType, Author AS Change
+FROM BookAuthor WHERE IsObsolete = 0
+UNION  
+SELECT BookId, UpdatedDtm, 4 AS HistoryType, Author AS Change 
+FROM BookAuthorHistory WHERE IsObsolete = 0
+GO
+
+
+CREATE OR ALTER VIEW BookAuthorHistoryDrop_V
+AS
+SELECT BookId, UpdatedDtm,  5 AS HistoryType, Author AS Change
+FROM BookAuthor WHERE IsObsolete = 1
+UNION  
+SELECT BookId, UpdatedDtm, 5 AS HistoryType, Author AS Change 
+FROM BookAuthorHistory WHERE IsObsolete = 1
+GO
+
+
 -- #######################################################
 -- ##                   API                             ##
 -- #######################################################
-
 
 
 CREATE OR ALTER PROCEDURE Book_Modify_tr
@@ -207,42 +282,35 @@ DECLARE @Title NVARCHAR(100),
 SET @AuditedDtm = CURRENT_TIMESTAMP;
 
 -- Get current properties of Book with @BookId
-SELECT
-    @Title = Title,
-    @Description = [Description],
-    @PublishDate = PublishDate,
-    @UpdatedDtm = UpdatedDtm
-FROM
-    Book
-WHERE
-    BookId = @BookId;
+SELECT  @Title = Title,
+        @Description = [Description],
+        @PublishDate = PublishDate,
+        @UpdatedDtm = UpdatedDtm
+FROM    Book
+WHERE   BookId = @BookId;
 
 -- If any of the properties is changed, create a BookHistory and a non-exclusive subtype record for each changed property
 IF (@NewTitle <> @Title OR @NewDescription <> @Description OR @NewPublishDate <> @PublishDate)
     BEGIN
 
     INSERT INTO BookHistory
-        (BookId, AuditedDtm, UpdatedDtm)
-    VALUES
-        (@BookId, @AuditedDtm, @UpdatedDtm)
+            (BookId, AuditedDtm, UpdatedDtm)
+    VALUES  (@BookId, @AuditedDtm, @UpdatedDtm)
 
     IF (@NewTitle <> @Title)
-    INSERT INTO BookHistoryTitle
-        (BookId, AuditedDtm, Title)
-    VALUES
-        (@BookId, @AuditedDtm, @Title);
+        INSERT INTO BookHistoryTitle
+                (BookId, AuditedDtm, Title)
+        VALUES  (@BookId, @AuditedDtm, @Title);
 
     IF (@NewDescription <> @Description)
-    INSERT INTO BookHistoryDescription
-        (BookId, AuditedDtm, [Description])
-    VALUES
-        (@BookId, @AuditedDtm, @Description);
+        INSERT INTO BookHistoryDescription
+                (BookId, AuditedDtm, [Description])
+        VALUES  (@BookId, @AuditedDtm, @Description);
 
     IF (@NewPublishDate <> @PublishDate)
-    INSERT INTO BookHistoryPublishDate
-        (BookId, AuditedDtm, PublishDate)
-    VALUES
-        (@BookId, @AuditedDtm, @PublishDate);
+        INSERT INTO BookHistoryPublishDate
+                (BookId, AuditedDtm, PublishDate)
+        VALUES  (@BookId, @AuditedDtm, @PublishDate);
 
     -- Lastly update Book
     -- TODO: Only update changed properties
@@ -257,214 +325,83 @@ IF (@NewTitle <> @Title OR @NewDescription <> @Description OR @NewPublishDate <>
 END
 
 -- Insert new Authors
-INSERT INTO Author
-    (Author)
-SELECT
-    Author
-FROM
-    @NewAuthors
-WHERE 
-    Author NOT IN (
-    SELECT
-    Author
-FROM
-    Author
-    );
+INSERT INTO Author 
+        (Author)
+SELECT  Author
+FROM    @NewAuthors
+WHERE   Author NOT IN ( SELECT Author FROM Author );
 
 -- Insert new BookAuthors
-INSERT INTO BookAuthor
-    (BookId, Author, IsObsolete, UpdatedDtm)
-SELECT
-    @BookId,
-    Author,
-    0,
-    @AuditedDtm
-FROM
-    @NewAuthors
-WHERE
-    Author NOT IN (
-        SELECT
-    Author
-FROM
-    BookAuthor
-WHERE BookId=@BookId
-    );
+INSERT INTO BookAuthor 
+        (BookId, Author, IsObsolete, UpdatedDtm)
+SELECT  @BookId, Author, 0, @AuditedDtm
+FROM    @NewAuthors
+WHERE   Author NOT IN ( SELECT Author FROM BookAuthor WHERE BookId=@BookId );
 
 -- Insert new BookHistory
-INSERT INTO BookAuthorHistory
-    (BookId, Author, AuditedDtm, IsObsolete, UpdatedDtm)
-SELECT
-    BookId,
-    Author,
-    @AuditedDtm,
-    IsObsolete,
-    UpdatedDtm
-FROM
-    BookAuthor
-WHERE 
-        BookId = @BookId AND
-    ((Author IN (SELECT
-        *
-    FROM
-        @NewAuthors) AND IsObsolete = 1)
-    OR
-    (Author NOT IN (SELECT
-        *
-    FROM
-        @NewAuthors) AND IsObsolete = 0))
+INSERT INTO BookAuthorHistory 
+        (BookId, Author, AuditedDtm, IsObsolete, UpdatedDtm)
+SELECT 
+        BookId, Author, @AuditedDtm, IsObsolete, UpdatedDtm
+FROM    BookAuthor
+WHERE   BookId = @BookId 
+AND ( 
+        (Author IN (SELECT * FROM @NewAuthors) AND IsObsolete = 1)
+        OR
+        (Author NOT IN (SELECT * FROM @NewAuthors) AND IsObsolete = 0)
+    )
 
 -- Restore BookAuthors
-UPDATE BookAuthor
-    SET IsObsolete=0,
+UPDATE  BookAuthor
+SET     IsObsolete=0,
         UpdatedDtm = @AuditedDtm
-    WHERE BookId=@BookId
-    AND Author IN (
-        SELECT
-        Author
-    FROM
-        @NewAuthors)
-    AND IsObsolete = 1;
+WHERE   BookId=@BookId
+AND     Author IN ( SELECT Author FROM @NewAuthors)
+AND     IsObsolete = 1;
 
 --Soft-delete BookAuthors
-UPDATE BookAuthor
-    SET IsObsolete=1,
+UPDATE  BookAuthor
+SET     IsObsolete=1,
         UpdatedDtm = @AuditedDtm
-    WHERE BookId=@BookId
-    AND Author NOT IN (
-        SELECT
-        Author
-    FROM
-        @NewAuthors)
-    AND IsObsolete = 0;
+WHERE   BookId=@BookId
+AND     Author NOT IN ( SELECT Author FROM @NewAuthors)
+AND     IsObsolete = 0;
 
 COMMIT
 GO
 
 
-CREATE PROCEDURE BookAuthor_Add_tr
-    @BookId INT,
-    @Author NVARCHAR(100)
+CREATE OR ALTER PROCEDURE BookHistory_Search
+    @BookId         INT                             = NULL,     -- Get changes for this book only
+    @FromDtm        DATETIME                        = NULL,     -- Get changes made on @FromDtm or later
+    @ToDtm          DATETIME                        = NULL,     -- Get changes made on @ToDtm or earlier
+    @HistoryTypes   HistoryTypeTableType READONLY,              -- Get changes of the specified types, or any type if empty
+    @PageNo         INT                             = NULL,
+    @PageSize       INT                             = NULL,
+    @Order          NVARCHAR(4)                     = 'DESC'    -- Ascending ('ASC') or Descending ('DESC') order by UpdatedDtm
 AS
-SET NOCOUNT ON;
-BEGIN TRANSACTION
 
--- If BookAuthor with @BookId and @Author already exists, check @IsObsolete flag and update accordingly
-IF EXISTS ( 
-SELECT
-    1
-FROM
-    BookAuthor
-WHERE 
-    BookId = @BookId AND Author = @Author
-)
-BEGIN
-
-    DECLARE @IsObsolete BIT,
-            @UpdatedDtm DATETIME;
-
-    SELECT
-        @IsObsolete = IsObsolete,
-        @UpdatedDtm = UpdatedDtm
-    FROM
-        BookAuthor
-    WHERE 
-        BookId = @BookId AND Author = @Author
-
-    -- If the record was flagged with @IsObsolete = true (it was previously soft-deleted), append the change in BookAuthorHistory and update BookAuthor
-    -- Else no action is required
-    IF @IsObsolete = 1
-    BEGIN
-        DECLARE @AuditedDtm DATETIME;
-        SET @AuditedDtm = CURRENT_TIMESTAMP;
-
-        INSERT INTO BookAuthorHistory
-            (BookId, Author, AuditedDtm, IsObsolete, UpdatedDtm)
-        VALUES
-            (@BookId, @Author, @AuditedDtm, 1, @UpdatedDtm);
-
-        UPDATE BookAuthor
-        SET IsObsolete = 0,
-            UpdatedDtm = @AuditedDtm
-        WHERE
-            BookId = @BookId AND Author = @Author
-    END
-END
--- If a record in BookAuthor with @BookId and @Author does not exist, insert a new one
-ELSE
-BEGIN
-    INSERT INTO BookAuthor
-        (BookId, Author, IsObsolete, UpdatedDtm)
-    VALUES
-        (@BookId, @Author, 0, CURRENT_TIMESTAMP);
-END
-
-COMMIT
+SELECT * FROM (
+    SELECT * FROM BookHistoryTitle_V 
+    UNION
+    SELECT * FROM BookHistoryDescription_V 
+    UNION
+    SELECT * FROM BookHistoryPublishDate_V
+    UNION
+    SELECT * FROM BookAuthorHistoryAdd_V
+    UNION
+    SELECT * FROM BookAuthorHistoryDrop_V
+) as History
+WHERE   (History.BookId = @BookId OR @BookId IS NULL)
+AND     (History.UpdatedDtm >= @FromDtm OR @FromDtm IS NULL)
+AND     (History.UpdatedDtm <= @ToDtm OR @ToDtm IS NULL)
+AND     (History.HistoryType IN (SELECT HistoryType FROM @HistoryTypes) OR NOT EXISTS (SELECT 1 FROM @HistoryTypes))
+ORDER BY    CASE WHEN @Order = 'DESC' OR @Order IS NULL THEN History.UpdatedDtm END DESC, 
+            CASE WHEN @Order='ASC' THEN History.UpdatedDtm END ASC
+OFFSET      CASE WHEN @PageNo > 0 AND @PageSize > 0 THEN @PageSize * (@PageNo - 1) ELSE 0 END ROWS
+FETCH NEXT  CASE WHEN @PageSize > 0 THEN @PageSize ELSE 100 END ROWS ONLY
+OPTION (RECOMPILE)
 GO
-
-
-CREATE PROCEDURE BookAuthor_Drop_tr
-    @BookId INT,
-    @Author NVARCHAR(100)
-AS
-SET NOCOUNT ON;
-BEGIN TRANSACTION
-
--- If BookAuthor with @BookId and @Author already exists, check @IsObsolete flag and update accordingly
-IF EXISTS ( 
-SELECT
-    1
-FROM
-    BookAuthor
-WHERE 
-    BookId = @BookId AND Author = @Author
-)
-BEGIN
-
-    DECLARE @IsObsolete BIT,
-            @UpdatedDtm DATETIME;
-
-    SELECT
-        @IsObsolete = IsObsolete,
-        @UpdatedDtm = UpdatedDtm
-    FROM
-        BookAuthor
-    WHERE 
-        BookId = @BookId AND Author = @Author
-
-    -- If the record was flagged with @IsObsolete = false, append the change in BookAuthorHistory and soft-delete BookAuthor
-    -- Else no action is required
-    IF @IsObsolete = 0
-    BEGIN
-        DECLARE @AuditedDtm DATETIME;
-        SET @AuditedDtm = CURRENT_TIMESTAMP;
-
-        INSERT INTO BookAuthorHistory
-            (BookId, Author, AuditedDtm, IsObsolete, UpdatedDtm)
-        VALUES
-            (@BookId, @Author, @AuditedDtm, 0, @UpdatedDtm);
-
-        UPDATE BookAuthor
-        SET IsObsolete = 1,
-            UpdatedDtm = @AuditedDtm
-        WHERE
-            BookId = @BookId AND Author = @Author
-    END
-END
--- If a record in BookAuthor with @BookId and @Author does not exist, return NOT FOUND error code
-ELSE
-BEGIN
-    SELECT
-        1;
--- TODO: Throw NOT FOUND 
-END
-
-COMMIT
-GO
-
-
--- #######################################################
--- ##                   Views                           ##
--- #######################################################
 
 
 -- #######################################################
@@ -474,18 +411,20 @@ GO
 DROP USER IF EXISTS BookHistoryWebClient;
 DROP ROLE IF EXISTS BookHistoryRole;
 DROP LOGIN BookHistoryWebClient;
+GO
 
 CREATE ROLE BookHistoryRole;
 GRANT EXECUTE ON Book_Modify_tr TO BookHistoryRole;
-GRANT EXECUTE ON BookAuthor_Add_tr TO BookHistoryRole;
-GRANT EXECUTE ON BookAuthor_Drop_tr TO BookHistoryRole;
+GRANT EXECUTE ON BookHistory_Search TO BookHistoryRole;
 GRANT SELECT ON SCHEMA::dbo TO BookHistoryRole;
 GRANT EXECUTE ON TYPE::AuthorTableType TO BookHistoryRole;
+GRANT EXECUTE ON TYPE::HistoryTypeTableType TO BookHistoryRole;
+GO 
 
 CREATE LOGIN BookHistoryWebClient WITH PASSWORD = 'testpassword';
 CREATE USER BookHistoryWebClient FOR LOGIN BookHistoryWebClient;
 ALTER ROLE BookHistoryRole ADD MEMBER BookHistoryWebClient;
-
+GO
 
 -- #######################################################
 -- ##                   Seeds                           ##

@@ -1,4 +1,4 @@
-export enum RecordType {
+export enum HistoryType {
     Title = 1,
     Description = 2,
     PublishDate = 3,
@@ -6,9 +6,9 @@ export enum RecordType {
     AuthorDrop = 5
 }
 
-export interface HistoryRecord {
+export interface HistoryChange {
     bookId: number;
-    recordType: RecordType;
-    change: string;
     updatedDtm: Date;
+    historyType: HistoryType;
+    change: string;
 }

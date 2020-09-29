@@ -1,0 +1,10 @@
+#side-configuration-panel {
+  max-width: 25%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+table {
+  width: 100%;
+}
