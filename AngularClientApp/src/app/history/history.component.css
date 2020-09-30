@@ -5,6 +5,8 @@
   padding: 16px;
 }
 
-table {
-  width: 100%;
+.container {
+  margin: 16px;
+  position: relative;
+  min-height: 200px;
 }

@@ -27,19 +27,25 @@ export class BookService {
     return this.http.put(`${environment.apiUrl}/books/${bookId}`, bookDetail);
   }
 
-
-  getHistoryChanges(historyQueryParams?: ParamMap): Observable<HistoryChange[]> {
-
-    const params = new HttpParams();
-
-    historyQueryParams.keys.forEach(key => {
-      params.append(key, historyQueryParams.get(key));
+  getHistoryChanges(paramMap?: ParamMap): Observable<HistoryChange[]> {
+    let httpParams = new HttpParams();
+    paramMap.keys.forEach(key => {
+      // console.log(`${key}: ${paramMap.get(key)}`);
+      httpParams = httpParams.append(key, paramMap.get(key));
     });
-
-    console.log(params.toString());
-
-    return this.http.get<HistoryChange[]>(`${environment.apiUrl}/history`, { params });
+    return this.http.get<HistoryChange[]>(`${environment.apiUrl}/history`, { params: httpParams });
   }
+
+  getHistoryCount(paramMap?: ParamMap): Observable<number> {
+    let httpParams = new HttpParams();
+    paramMap.keys.forEach(key => {
+      // console.log(`${key}: ${paramMap.get(key)}`);
+      httpParams = httpParams.append(key, paramMap.get(key));
+    });
+    return this.http.get<number>(`${environment.apiUrl}/history/count`, { params: httpParams });
+  }
+
+
 
   // getHistoryChanges(historyQueryParams?: HistoryQueryParams): Observable<HistoryChange[]> {
   //   const params = new HttpParams();

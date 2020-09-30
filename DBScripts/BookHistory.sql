@@ -20,6 +20,7 @@ GO
 
 DROP PROCEDURE IF EXISTS Book_Modify_tr;
 DROP PROCEDURE IF EXISTS BookHistory_Search;
+DROP PROCEDURE IF EXISTS BookHistory_Count;
 GO
 
 DROP TYPE IF EXISTS AuthorTableType; 
@@ -433,15 +434,42 @@ SELECT * FROM (
     SELECT * FROM BookAuthorHistoryAdd_V
     UNION
     SELECT * FROM BookAuthorHistoryDrop_V
-) as History
+) AS History
 WHERE   (History.BookId = @BookId OR @BookId IS NULL)
 AND     (History.UpdatedDtm >= @FromDtm OR @FromDtm IS NULL)
 AND     (History.UpdatedDtm <= @ToDtm OR @ToDtm IS NULL)
 AND     (History.HistoryType IN (SELECT HistoryType FROM @HistoryTypes) OR NOT EXISTS (SELECT 1 FROM @HistoryTypes))
 ORDER BY    CASE WHEN @Order = 'DESC' OR @Order IS NULL THEN History.UpdatedDtm END DESC, 
             CASE WHEN @Order='ASC' THEN History.UpdatedDtm END ASC
-OFFSET      CASE WHEN @PageNo > 0 AND @PageSize > 0 THEN @PageSize * (@PageNo - 1) ELSE 0 END ROWS
+OFFSET      CASE WHEN @PageNo >= 0 AND @PageSize > 0 THEN @PageSize * @PageNo ELSE 0 END ROWS
 FETCH NEXT  CASE WHEN @PageSize > 0 THEN @PageSize ELSE 100 END ROWS ONLY
+OPTION (RECOMPILE)
+GO
+
+
+-- https://www.sqlservercentral.com/articles/optimising-server-side-paging-part-ii
+CREATE OR ALTER PROCEDURE BookHistory_Count
+    @BookId         INT                             = NULL,     -- Get changes for this book only
+    @FromDtm        DATETIME                        = NULL,     -- Get changes made on @FromDtm or later
+    @ToDtm          DATETIME                        = NULL,     -- Get changes made on @ToDtm or earlier
+    @HistoryTypes   HistoryTypeTableType READONLY               -- Get changes of the specified types, or any type if empty
+AS
+
+SELECT Count(*) FROM (
+    SELECT * FROM BookHistoryTitle_V 
+    UNION
+    SELECT * FROM BookHistoryDescription_V 
+    UNION
+    SELECT * FROM BookHistoryPublishDate_V
+    UNION
+    SELECT * FROM BookAuthorHistoryAdd_V
+    UNION
+    SELECT * FROM BookAuthorHistoryDrop_V
+) AS History
+WHERE   (History.BookId = @BookId OR @BookId IS NULL)
+AND     (History.UpdatedDtm >= @FromDtm OR @FromDtm IS NULL)
+AND     (History.UpdatedDtm <= @ToDtm OR @ToDtm IS NULL)
+AND     (History.HistoryType IN (SELECT HistoryType FROM @HistoryTypes) OR NOT EXISTS (SELECT 1 FROM @HistoryTypes))
 OPTION (RECOMPILE)
 GO
 
@@ -458,6 +486,7 @@ GO
 CREATE ROLE BookHistoryRole;
 GRANT EXECUTE ON Book_Modify_tr TO BookHistoryRole;
 GRANT EXECUTE ON BookHistory_Search TO BookHistoryRole;
+GRANT EXECUTE ON BookHistory_Count TO BookHistoryRole;
 GRANT SELECT ON SCHEMA::dbo TO BookHistoryRole;
 GRANT EXECUTE ON TYPE::AuthorTableType TO BookHistoryRole;
 GRANT EXECUTE ON TYPE::HistoryTypeTableType TO BookHistoryRole;
@@ -467,6 +496,8 @@ CREATE LOGIN BookHistoryWebClient WITH PASSWORD = 'testpassword';
 CREATE USER BookHistoryWebClient FOR LOGIN BookHistoryWebClient;
 ALTER ROLE BookHistoryRole ADD MEMBER BookHistoryWebClient;
 GO
+
+
 
 -- #######################################################
 -- ##                   Seeds                           ##

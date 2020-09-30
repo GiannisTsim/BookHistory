@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from "@angular/router";
-import { switchMap } from "rxjs/operators";
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { MatPaginator, PageEvent } from "@angular/material/paginator";
+import { ActivatedRoute, NavigationExtras, ParamMap, Router } from "@angular/router";
+import { isEqual } from "lodash-es";
+import { filter, switchMap, tap } from "rxjs/operators";
 
 import { BookService } from "../core/book.service";
-import { HistoryChange, HistoryType } from "../models/history-change.model";
-import { HistoryQueryParams } from "../models/history-query-params.model";
 
 @Component({
   selector: 'app-history',
@@ -12,35 +12,58 @@ import { HistoryQueryParams } from "../models/history-query-params.model";
   styleUrls: ['./history.component.css']
 })
 export class HistoryComponent implements OnInit {
-  displayedColumns: string[] = ['bookId', 'updatedDtm', 'description'];
 
-  historyTypeDescription = {
-    [HistoryType.Title]: "Title changed",
-    [HistoryType.Description]: "Description changed",
-    [HistoryType.PublishDate]: "Publish date changed",
-    [HistoryType.AuthorAdd]: "Author added",
-    [HistoryType.AuthorDrop]: "Author removed",
-  };
+  paramMap: ParamMap;
 
-  historyChanges: HistoryChange[];
+  @ViewChild(MatPaginator) paginator: MatPaginator;
 
-  constructor(private route: ActivatedRoute, private bookService: BookService) { }
+  constructor(private router: Router, private route: ActivatedRoute, private bookService: BookService) { }
 
   ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.keys.length === 0) {
+      const navigationExtras: NavigationExtras = {
+        queryParamsHandling: 'merge',
+        queryParams: { pageNo: 0, pageSize: 10 }
+      };
+      this.router.navigate(["/history"], navigationExtras);
+    }
+
     this.route.queryParamMap.pipe(
-      switchMap(param => {
-        // const historyQueryParams: HistoryQueryParams = {};
-        // param.has("bookId") && !isNaN(parseInt(param.get("bookId"), 10))
-        //   && (historyQueryParams.bookId = parseInt(param.get("bookId"), 10));
-        // param.has("fromDtm") && (historyQueryParams.fromDtm = new Date(param.get("fromDtm")));
-        // param.has("toDtm") && (historyQueryParams.toDtm = new Date(param.get("toDtm")));
-        // historyQueryParams.historyTypes = param.getAll("historyTypes").map(type => type as HistoryType)
-        console.log(param.keys);
-        return this.bookService.getHistoryChanges(param);
+      filter(paramMap => {
+        return paramMap.get("bookId") !== this.paramMap?.get("bookId") ||
+          paramMap.get("fromDtm") !== this.paramMap?.get("fromDtm") ||
+          paramMap.get("toDtm") !== this.paramMap?.get("toDtm") ||
+          !isEqual(paramMap.getAll("historyTypes"), this.paramMap?.getAll("historyTypes"));
+      }),
+      switchMap(paramMap => {
+        this.paramMap = paramMap;
+        console.log(this.paramMap);
+        console.log("HistoryComponent -- New query params detected");
+        return this.bookService.getHistoryCount(paramMap);
       }))
-      .subscribe(historyChanges => {
-        this.historyChanges = historyChanges;
+      .subscribe(count => {
+        this.paginator.length = count;
       });
+  }
+
+  onPageEvent(event: PageEvent) {
+    // console.log(event);
+    const navigationExtras: NavigationExtras = {
+      queryParamsHandling: 'merge',
+    };
+
+    const currentPageSize = parseInt(this.route.snapshot.queryParamMap.get("pageSize"), 10);
+    const currentPageNo = parseInt(this.route.snapshot.queryParamMap.get("pageNo"), 10);
+
+    if (event.pageSize !== currentPageSize) {
+      this.paginator.firstPage();
+      navigationExtras.queryParams = { pageNo: 0, pageSize: event.pageSize };
+    }
+    else if (event.pageIndex !== currentPageNo) {
+      navigationExtras.queryParams = { pageNo: event.pageIndex };
+    }
+
+    this.router.navigate(["/history"], navigationExtras);
   }
 
 }

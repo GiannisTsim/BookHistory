@@ -49,5 +49,33 @@ namespace DotNetCoreWebAPI.DataStores
                 commandType: CommandType.StoredProcedure);
             return history;
         }
+
+
+        public async Task<int> CountAsync(HistoryQueryParams queryParams)
+        {
+            var historyTypesDataTable = new DataTable();
+            historyTypesDataTable.Columns.Add("HistoryType", typeof(int));
+            if (queryParams.HistoryTypes != null)
+            {
+                foreach (int historyType in queryParams.HistoryTypes)
+                {
+                    historyTypesDataTable.Rows.Add(historyType);
+                }
+            }
+
+            using SqlConnection connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var count = await connection.QuerySingleOrDefaultAsync<int>(
+                "BookHistory_Count",
+                new
+                {
+                    queryParams.BookId,
+                    queryParams.FromDtm,
+                    queryParams.ToDtm,
+                    HistoryTypes = historyTypesDataTable.AsTableValuedParameter("HistoryTypeTableType")
+                },
+                commandType: CommandType.StoredProcedure);
+            return count;
+        }
     }
 }

@@ -29,5 +29,14 @@ namespace DotNetCoreWebAPI.Controllers
             return Ok(history);
         }
 
+
+        [HttpGet("api/history/count")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<int>> GetHistoryCount([FromQuery] HistoryQueryParams queryParams)
+        {
+            int count = await _historyStore.CountAsync(queryParams);
+            return Ok(count);
+        }
+
     }
 }
