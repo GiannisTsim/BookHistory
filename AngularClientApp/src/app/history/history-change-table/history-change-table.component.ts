@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from "@angular/router";
+import { Sort } from "@angular/material/sort";
+import { ActivatedRoute, NavigationExtras, Router } from "@angular/router";
 import { filter, switchMap } from "rxjs/operators";
+import { Order } from "src/app/models/history-query-params.model";
 
 import { BookService } from "../../core/book.service";
 import { HistoryChange, HistoryType } from "../../models/history-change.model";
@@ -23,7 +25,9 @@ export class HistoryChangeTableComponent implements OnInit {
 
   historyChanges: HistoryChange[];
 
-  constructor(private route: ActivatedRoute, private bookService: BookService) { }
+  sortOrder: Order = Order.Desc;
+
+  constructor(private router: Router, private route: ActivatedRoute, private bookService: BookService) { }
 
   ngOnInit(): void {
     this.route.queryParamMap.pipe(
@@ -35,6 +39,22 @@ export class HistoryChangeTableComponent implements OnInit {
       .subscribe(historyChanges => {
         this.historyChanges = historyChanges;
       });
+  }
+
+  // TODO: reset pagination on sort order change
+  onSortOrderChange(event: Sort) {
+    const navigationExtras: NavigationExtras = {
+      queryParamsHandling: 'merge',
+    };
+
+    const currentSortOrder = this.route.snapshot.queryParamMap.get("order");
+
+    if (event.direction !== currentSortOrder) {
+      navigationExtras.queryParams = { order: event.direction };
+    }
+
+    this.router.navigate(["/history"], navigationExtras);
+
   }
 
 }

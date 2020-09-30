@@ -5,6 +5,7 @@ import { isEqual } from "lodash-es";
 import { filter, switchMap, tap } from "rxjs/operators";
 
 import { BookService } from "../core/book.service";
+import { Order } from "../models/history-query-params.model";
 
 @Component({
   selector: 'app-history',
@@ -23,7 +24,7 @@ export class HistoryComponent implements OnInit {
     if (this.route.snapshot.queryParamMap.keys.length === 0) {
       const navigationExtras: NavigationExtras = {
         queryParamsHandling: 'merge',
-        queryParams: { pageNo: 0, pageSize: 10 }
+        queryParams: { pageNo: 0, pageSize: 10, order: Order.Desc }
       };
       this.router.navigate(["/history"], navigationExtras);
     }

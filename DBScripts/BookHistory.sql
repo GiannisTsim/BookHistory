@@ -421,7 +421,7 @@ CREATE OR ALTER PROCEDURE BookHistory_Search
     @HistoryTypes   HistoryTypeTableType READONLY,              -- Get changes of the specified types, or any type if empty
     @PageNo         INT                             = NULL,
     @PageSize       INT                             = NULL,
-    @Order          NVARCHAR(4)                     = 'DESC'    -- Ascending ('ASC') or Descending ('DESC') order by UpdatedDtm
+    @Order          NVARCHAR(4)                     = 'desc'    -- Ascending ('asc') or Descending ('desc') order by UpdatedDtm
 AS
 
 SELECT * FROM (
@@ -439,8 +439,8 @@ WHERE   (History.BookId = @BookId OR @BookId IS NULL)
 AND     (History.UpdatedDtm >= @FromDtm OR @FromDtm IS NULL)
 AND     (History.UpdatedDtm <= @ToDtm OR @ToDtm IS NULL)
 AND     (History.HistoryType IN (SELECT HistoryType FROM @HistoryTypes) OR NOT EXISTS (SELECT 1 FROM @HistoryTypes))
-ORDER BY    CASE WHEN @Order = 'DESC' OR @Order IS NULL THEN History.UpdatedDtm END DESC, 
-            CASE WHEN @Order='ASC' THEN History.UpdatedDtm END ASC
+ORDER BY    CASE WHEN @Order = 'desc' OR @Order IS NULL THEN History.UpdatedDtm END DESC, 
+            CASE WHEN @Order='asc' THEN History.UpdatedDtm END ASC
 OFFSET      CASE WHEN @PageNo >= 0 AND @PageSize > 0 THEN @PageSize * @PageNo ELSE 0 END ROWS
 FETCH NEXT  CASE WHEN @PageSize > 0 THEN @PageSize ELSE 100 END ROWS ONLY
 OPTION (RECOMPILE)

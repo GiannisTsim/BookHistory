@@ -1,8 +1,8 @@
 import { HistoryType } from "./history-change.model";
 
 export enum Order {
-    Asc = "ASC",
-    Desc = "DESC"
+    Asc = "asc",
+    Desc = "desc"
 }
 
 export interface HistoryQueryParams {

@@ -1,5 +1,6 @@
 <div class="table-container">
-    <table mat-table [dataSource]="historyChanges" class="mat-elevation-z8">
+    <table mat-table [dataSource]="historyChanges" matSort (matSortChange)="onSortOrderChange($event)"
+        matSortActive="updatedDtm" [matSortDirection]="sortOrder" matSortDisableClear class="mat-elevation-z8">
 
         <!-- Book ID Column -->
         <ng-container matColumnDef="bookId">
@@ -9,15 +10,10 @@
 
         <!-- Updated At Column -->
         <ng-container matColumnDef="updatedDtm">
-            <th mat-header-cell *matHeaderCellDef> Updated At </th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Updated At </th>
             <td mat-cell *matCellDef="let historyChange"> {{historyChange.updatedDtm | date:"medium"}} </td>
         </ng-container>
-
-        <!-- Change Type Column -->
-        <!-- <ng-container matColumnDef="historyType">
-            <th mat-header-cell *matHeaderCellDef> Change Type </th>
-            <td mat-cell *matCellDef="let historyChange"> {{historyTypeDescription[historyChange.historyType]}} </td>
-        </ng-container> -->
 
         <!-- Description Column -->
         <ng-container matColumnDef="description">
