@@ -25,7 +25,9 @@ export class HistoryChangeTableComponent implements OnInit {
     [HistoryType.AuthorDrop]: "Author removed",
   };
 
-  historyChanges: HistoryChange[];
+  historyChanges: HistoryChange[] = [];
+
+  totalCount: number;
 
   sortOrder: Order = Order.Desc;
 
@@ -57,7 +59,7 @@ export class HistoryChangeTableComponent implements OnInit {
         return this.bookService.getHistoryCount(paramMap);
       }))
       .subscribe(count => {
-        this.paginator.length = count;
+        this.totalCount = count;
       });
   }
 

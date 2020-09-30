@@ -71,21 +71,31 @@ export class ConfigurationComponent implements OnInit {
 
   onSearch() {
     const queryParams: Params = {};
+    let shouldResetPagination = false;
 
     if (!isEmpty(this.historyTypes.value) && this.typeFilterIsChecked) {
       queryParams.historyTypes = this.historyTypes.value;
+      shouldResetPagination = true;
     } else {
       queryParams.historyTypes = null;
     }
+
     if (!isEmpty(this.fromDtm.value) && this.timePeriodFilterIsChecked) {
       queryParams.fromDtm = this.fromDtm.value;
+      shouldResetPagination = true;
     } else {
       queryParams.fromDtm = null;
     }
+
     if (!isEmpty(this.toDtm.value) && this.timePeriodFilterIsChecked) {
       queryParams.toDtm = this.toDtm.value;
+      shouldResetPagination = true;
     } else {
       queryParams.toDtm = null;
+    }
+
+    if (shouldResetPagination) {
+      queryParams.pageNo = 0;
     }
 
     const navigationExtras: NavigationExtras = {
