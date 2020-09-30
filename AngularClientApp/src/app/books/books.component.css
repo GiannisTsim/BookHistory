@@ -4,7 +4,7 @@
 }
 
 #book-list {
-  max-width: 25%;
+  width: 25%;
   text-overflow: ellipsis;
   padding-left: 16px;
   padding-top: 16px;

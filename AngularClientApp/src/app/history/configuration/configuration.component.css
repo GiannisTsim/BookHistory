@@ -1,0 +1,13 @@
+#container {
+  display: flex;
+  flex-direction: column;
+}
+
+form button {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.full-width-form-field {
+  width: 100%;
+}

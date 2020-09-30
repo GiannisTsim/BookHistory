@@ -1,26 +1,49 @@
-<div id="side-configuration-panel">
+<div id="container">
 
-    <div>Filter by change type</div>
-    <mat-selection-list dense>
-        <mat-list-option [value]="historyType.Title">
-            Title
-        </mat-list-option>
-        <mat-list-option [value]="historyType.Description">
-            Description
-        </mat-list-option>
-        <mat-list-option [value]="historyType.PublishDate">
-            Publish date
-        </mat-list-option>
-        <mat-list-option [value]="historyType.AuthorAdd">
-            Author addition
-        </mat-list-option>
-        <mat-list-option [value]="historyType.AuthorDrop">
-            Author removal
-        </mat-list-option>
-    </mat-selection-list>
+    <form [formGroup]="configForm" (ngSubmit)="onSearch()">
 
-    <mat-slide-toggle>Group by change type</mat-slide-toggle>
+        <mat-slide-toggle [checked]="typeFilterIsChecked" (change)="onTypeFilterToogle($event)" color="primary">
+            Filter by type
+        </mat-slide-toggle>
 
-    <button mat-flat-button color="primary">Search</button>
+        <mat-selection-list *ngIf="typeFilterIsChecked" dense disableRipple multiple formControlName="historyTypes">
+            <mat-list-option [value]="historyType.Title">
+                Title
+            </mat-list-option>
+            <mat-list-option [value]="historyType.Description">
+                Description
+            </mat-list-option>
+            <mat-list-option [value]="historyType.PublishDate">
+                Publish date
+            </mat-list-option>
+            <mat-list-option [value]="historyType.AuthorAdd">
+                Author addition
+            </mat-list-option>
+            <mat-list-option [value]="historyType.AuthorDrop">
+                Author removal
+            </mat-list-option>
+        </mat-selection-list>
+
+        <hr>
+
+        <mat-slide-toggle [checked]="timePeriodFilterIsChecked" (change)="onTimePeriodFilterToogle($event)"
+            color="primary">Filter by time period
+        </mat-slide-toggle>
+
+        <div *ngIf="timePeriodFilterIsChecked">
+            <!-- TODO: alternative for firefox -->
+            <mat-form-field class="full-width-form-field">
+                <input matInput type="datetime-local" placeholder="From" [max]="toDtm" formControlName="fromDtm">
+            </mat-form-field>
+
+            <mat-form-field class="full-width-form-field">
+                <input matInput type="datetime-local" placeholder="Until" [min]="fromDtm" formControlName="toDtm">
+            </mat-form-field>
+
+        </div>
+
+        <button mat-flat-button color="primary" type="submit">Search</button>
+
+    </form>
 
 </div>

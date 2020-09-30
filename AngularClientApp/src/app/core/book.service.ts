@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable } from '@angular/core';
 import { ParamMap } from "@angular/router";
+import { isEmpty } from "lodash-es";
 import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 
@@ -27,35 +28,27 @@ export class BookService {
     return this.http.put(`${environment.apiUrl}/books/${bookId}`, bookDetail);
   }
 
-  getHistoryChanges(paramMap?: ParamMap): Observable<HistoryChange[]> {
+  private buildHttpParams(paramMap: ParamMap) {
     let httpParams = new HttpParams();
-    paramMap.keys.forEach(key => {
-      // console.log(`${key}: ${paramMap.get(key)}`);
-      httpParams = httpParams.append(key, paramMap.get(key));
-    });
-    return this.http.get<HistoryChange[]>(`${environment.apiUrl}/history`, { params: httpParams });
+    paramMap.keys
+      .filter(key => !isEmpty(paramMap.get(key)))
+      .forEach(key => {
+        if (key === "historyTypes") {
+          paramMap.getAll("historyTypes").forEach(historyType => {
+            httpParams = httpParams.append(key, historyType);
+          });
+        } else {
+          httpParams = httpParams.append(key, paramMap.get(key));
+        }
+      });
+    return httpParams;
+  }
+
+  getHistoryChanges(paramMap?: ParamMap): Observable<HistoryChange[]> {
+    return this.http.get<HistoryChange[]>(`${environment.apiUrl}/history`, { params: this.buildHttpParams(paramMap) });
   }
 
   getHistoryCount(paramMap?: ParamMap): Observable<number> {
-    let httpParams = new HttpParams();
-    paramMap.keys.forEach(key => {
-      // console.log(`${key}: ${paramMap.get(key)}`);
-      httpParams = httpParams.append(key, paramMap.get(key));
-    });
-    return this.http.get<number>(`${environment.apiUrl}/history/count`, { params: httpParams });
+    return this.http.get<number>(`${environment.apiUrl}/history/count`, { params: this.buildHttpParams(paramMap) });
   }
-
-
-
-  // getHistoryChanges(historyQueryParams?: HistoryQueryParams): Observable<HistoryChange[]> {
-  //   const params = new HttpParams();
-
-  //   historyQueryParams && Object.keys(historyQueryParams).forEach(key => {
-  //     params.append(key, historyQueryParams[key]);
-  //   });
-
-  //   console.log(params.toString());
-
-  //   return this.http.get<HistoryChange[]>(`${environment.apiUrl}/history`, { params });
-  // }
 }

@@ -1,8 +1,8 @@
-<div class="container mat-elevation-z8">
+<div id="container">
 
-    <app-history-change-table></app-history-change-table>
+    <app-configuration id="side-configuration-panel"></app-configuration>
 
-    <mat-paginator [length]="100" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]" (page)="onPageEvent($event)">
-    </mat-paginator>
-
+    <div id="main-content" class="mat-elevation-z8">
+        <app-history-change-table></app-history-change-table>
+    </div>
 </div>

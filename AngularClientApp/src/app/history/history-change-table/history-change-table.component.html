@@ -1,4 +1,4 @@
-<div class="table-container">
+<div id="table-container">
     <table mat-table [dataSource]="historyChanges" matSort (matSortChange)="onSortOrderChange($event)"
         matSortActive="updatedDtm" [matSortDirection]="sortOrder" matSortDisableClear class="mat-elevation-z8">
 
@@ -27,3 +27,6 @@
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
 </div>
+
+<mat-paginator [length]="100" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]" (page)="onPageEvent($event)">
+</mat-paginator>

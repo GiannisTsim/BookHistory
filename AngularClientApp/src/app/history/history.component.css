@@ -1,12 +1,17 @@
-#side-configuration-panel {
-  max-width: 25%;
+#container {
   display: flex;
-  flex-direction: column;
-  padding: 16px;
+  flex-direction: row;
+  max-height: calc(100% - 49px); /* minus top navigation bar */
 }
 
-.container {
+#side-configuration-panel {
+  width: 20%;
+  /* width: 200px; */
+  padding: 16px 0px 16px 16px;
+}
+
+#main-content {
+  flex: 1 1 auto;
   margin: 16px;
-  position: relative;
-  min-height: 200px;
+  max-height: 100%;
 }

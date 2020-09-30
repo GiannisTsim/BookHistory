@@ -1,6 +1,5 @@
-.table-container {
-  position: relative;
-  max-height: 400px;
+#table-container {
+  max-height: calc(100% - 56px); /* Minus paginator height */
   overflow: auto;
 }
 
