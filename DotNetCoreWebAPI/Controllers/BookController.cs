@@ -41,10 +41,10 @@ namespace DotNetCoreWebAPI
         }
 
         [HttpPut("api/books/{bookId}")]
-        public async Task<ActionResult> EditBook([FromRoute] int bookId, [FromBody] BookDetail bookDetail)
+        public async Task<ActionResult<BookDetail>> EditBook([FromRoute] int bookId, [FromBody] BookDetail bookDetail)
         {
-            await _bookStore.UpdateAsync(bookId, bookDetail);
-            return Ok();
+            BookDetail newBookDetail = await _bookStore.UpdateAsync(bookId, bookDetail);
+            return Ok(newBookDetail);
         }
 
     }

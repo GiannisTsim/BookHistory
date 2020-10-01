@@ -1,11 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { FormArray, FormControl, FormGroup } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
-import { isEqual } from "lodash-es";
 import { switchMap } from "rxjs/operators";
 
 import { BookService } from "src/app/core/book.service";
-import { Book, BookDetail } from "src/app/models/book.model";
+import { BookDetail } from "src/app/models/book-detail.model";
 
 @Component({
   selector: 'app-book-detail',
@@ -41,15 +40,11 @@ export class BookDetailComponent implements OnInit {
   }
 
   onSubmit() {
-    console.warn(this.bookForm.value);
     this.bookService.editBook(this.bookDetail.bookId, this.bookForm.value as BookDetail)
       .subscribe(
-        () => {
+        (bookDetail) => {
           // TODO: communicate change through shared service, cannot use event emmiter because this is a routed component
-          // if (!isEqual(this.bookDetail as Book, this.bookForm.value as Book)) {
-          //   this.bookChanged.emit(this.bookDetail as Book);
-          // }
-          this.bookDetail = { bookId: this.bookDetail.bookId, ...this.bookForm.value };
+          this.bookDetail = bookDetail;
           this.bookForm.markAsPristine();
         },
         error => console.log(error)

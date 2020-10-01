@@ -2,10 +2,12 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable } from '@angular/core';
 import { ParamMap } from "@angular/router";
 import { isEmpty } from "lodash-es";
-import { Observable } from "rxjs";
+import { Observable, Subject } from "rxjs";
+import { tap } from "rxjs/operators";
 import { environment } from "src/environments/environment";
 
-import { Book, BookDetail } from "../models/book.model";
+import { Book } from "../models/book.model";
+import { BookDetail } from "../models/book-detail.model";
 import { HistoryQueryParam } from "../models/history-query-param.enum";
 import { HistorySearchResult } from "../models/history-search-result.model";
 
@@ -13,6 +15,9 @@ import { HistorySearchResult } from "../models/history-search-result.model";
   providedIn: 'root'
 })
 export class BookService {
+
+  private updatedBookSubject: Subject<Book> = new Subject<Book>();
+  readonly updatedBook$: Observable<Book> = this.updatedBookSubject.asObservable();
 
   constructor(private http: HttpClient) { }
 
@@ -24,8 +29,14 @@ export class BookService {
     return this.http.get<BookDetail>(`${environment.apiUrl}/books/${bookId}`);
   }
 
-  editBook(bookId: number, bookDetail: BookDetail) {
-    return this.http.put(`${environment.apiUrl}/books/${bookId}`, bookDetail);
+  editBook(bookId: number, bookDetail: BookDetail): Observable<BookDetail> {
+    // return this.http.put<BookDetail>(`${environment.apiUrl}/books/${bookId}`, bookDetail);
+    return this.http.put<BookDetail>(`${environment.apiUrl}/books/${bookId}`, bookDetail).pipe(
+      tap(bookDetail => {
+        this.updatedBookSubject.next(bookDetail as Book);
+      })
+    );
+
   }
 
   searchHistory(paramMap?: ParamMap): Observable<HistorySearchResult> {

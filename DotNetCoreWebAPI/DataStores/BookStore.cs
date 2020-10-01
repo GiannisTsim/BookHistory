@@ -54,7 +54,7 @@ namespace DotNetCoreWebAPI.DataStores
             return bookDetail;
         }
 
-        public async Task UpdateAsync(int bookId, BookDetail bookDetail)
+        public async Task<BookDetail> UpdateAsync(int bookId, BookDetail bookDetail)
         {
             var authorsDataTable = new DataTable();
             authorsDataTable.Columns.Add("Author", typeof(string));
@@ -76,6 +76,8 @@ namespace DotNetCoreWebAPI.DataStores
                     NewAuthors = authorsDataTable.AsTableValuedParameter("AuthorTableType")
                 },
                 commandType: CommandType.StoredProcedure);
+
+            return await FindDetailAsync(bookId);
         }
 
     }

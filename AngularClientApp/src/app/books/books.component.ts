@@ -15,6 +15,10 @@ export class BooksComponent implements OnInit {
 
   ngOnInit(): void {
     this.bookService.getBooks().subscribe((books) => this.books = books);
-  }
 
+    this.bookService.updatedBook$.subscribe(updatedBook => {
+      const index = this.books.findIndex(book => book.bookId === updatedBook.bookId);
+      this.books = [...this.books.slice(0, index), updatedBook, ...this.books.slice(index + 1)];
+    });
+  }
 }

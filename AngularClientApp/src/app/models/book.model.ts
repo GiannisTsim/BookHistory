@@ -3,12 +3,3 @@ export interface Book {
     title: string;
     publishDate: Date;
 }
-
-export interface BookDetail {
-    bookId: number;
-    title: string;
-    description: string;
-    publishDate: Date;
-    updatedDtm: Date;
-    authors: string[];
-}
