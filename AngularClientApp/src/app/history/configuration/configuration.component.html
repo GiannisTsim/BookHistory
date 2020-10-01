@@ -2,11 +2,12 @@
 
     <form [formGroup]="configForm" (ngSubmit)="onSearch()">
 
-        <mat-slide-toggle [checked]="typeFilterIsChecked" (change)="onTypeFilterToogle($event)" color="primary">
-            Filter by type
+        <mat-slide-toggle formControlName="shouldFilterByRecordType" color="primary">
+            Filter by record type
         </mat-slide-toggle>
 
-        <mat-selection-list *ngIf="typeFilterIsChecked" dense disableRipple multiple formControlName="recordTypes">
+        <mat-selection-list *ngIf="shouldFilterByRecordType.value" dense disableRipple multiple
+            formControlName="recordTypes">
             <mat-list-option [value]="recordType.Title">
                 Title
             </mat-list-option>
@@ -26,11 +27,10 @@
 
         <hr>
 
-        <mat-slide-toggle [checked]="timePeriodFilterIsChecked" (change)="onTimePeriodFilterToogle($event)"
-            color="primary">Filter by time period
+        <mat-slide-toggle formControlName="shouldFilterByDtm" color="primary">Filter by time period
         </mat-slide-toggle>
 
-        <div *ngIf="timePeriodFilterIsChecked">
+        <div *ngIf="shouldFilterByDtm.value">
             <!-- TODO: alternative for firefox -->
             <mat-form-field class="full-width-form-field">
                 <input matInput type="datetime-local" placeholder="From" [max]="toDtm" formControlName="fromDtm">
@@ -42,7 +42,7 @@
 
         </div>
 
-        <button mat-flat-button color="primary" type="submit">Search</button>
+        <button mat-flat-button color="primary" type="submit">Refresh</button>
 
     </form>
 

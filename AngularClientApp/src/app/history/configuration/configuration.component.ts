@@ -1,9 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { AbstractControl, FormControl, FormGroup } from "@angular/forms";
-import { MatSlideToggleChange } from "@angular/material/slide-toggle";
-import { ActivatedRoute, NavigationExtras, Params, Router } from "@angular/router";
+import { FormControl, FormGroup } from "@angular/forms";
+import { NavigationExtras, Router } from "@angular/router";
 import { isEmpty } from "lodash-es";
-import { HistoryQueryParam } from "src/app/models/history-query-param.enum";
 
 import { RecordType } from "src/app/models/record-type.enum";
 
@@ -14,97 +12,70 @@ import { RecordType } from "src/app/models/record-type.enum";
 })
 export class ConfigurationComponent implements OnInit {
   recordType = RecordType;
-  typeFilterIsChecked: boolean = false;
-  timePeriodFilterIsChecked: boolean = false;
 
   configForm = new FormGroup({
+    shouldFilterByRecordType: new FormControl(false),
     recordTypes: new FormControl([]),
+    shouldFilterByDtm: new FormControl(false),
     toDtm: new FormControl(''),
     fromDtm: new FormControl(''),
   });
 
-  constructor(private router: Router, private route: ActivatedRoute) { }
+  constructor(private router: Router) { }
 
-  get recordTypes(): AbstractControl {
+  get recordTypes() {
     return this.configForm.get("recordTypes");
   }
 
-  get fromDtm(): AbstractControl {
+  get shouldFilterByRecordType() {
+    return this.configForm.get("shouldFilterByRecordType");
+  }
+
+  get fromDtm() {
     return this.configForm.get("fromDtm");
   }
 
-  get toDtm(): AbstractControl {
+  get toDtm() {
     return this.configForm.get("toDtm");
   }
 
-  ngOnInit(): void {
-    this.route.queryParamMap.subscribe(paramMap => {
-      if (paramMap.has(HistoryQueryParam.RecordTypes)) {
-        this.typeFilterIsChecked = true;
-        this.recordTypes.setValue(paramMap.getAll(HistoryQueryParam.RecordTypes));
-      } else {
-        this.recordTypes.reset();
-      }
-
-      if (paramMap.has(HistoryQueryParam.FromDtm)) {
-        this.timePeriodFilterIsChecked = true;
-        this.fromDtm.setValue(paramMap.get(HistoryQueryParam.FromDtm));
-      } else {
-        this.fromDtm.reset();
-      }
-
-      if (paramMap.has(HistoryQueryParam.ToDtm)) {
-        this.timePeriodFilterIsChecked = true;
-        this.toDtm.setValue(paramMap.get(HistoryQueryParam.ToDtm));
-      } else {
-        this.toDtm.reset();
-      }
-    });
+  get shouldFilterByDtm() {
+    return this.configForm.get("shouldFilterByDtm");
   }
 
-  onTypeFilterToogle(event: MatSlideToggleChange) {
-    this.typeFilterIsChecked = event.checked;
-  }
-
-  onTimePeriodFilterToogle(event: MatSlideToggleChange) {
-    this.timePeriodFilterIsChecked = event.checked;
-  }
+  ngOnInit(): void { }
 
   onSearch() {
-    const queryParams: Params = {};
-    let shouldResetPagination = false;
 
-    if (!isEmpty(this.recordTypes.value) && this.typeFilterIsChecked) {
-      queryParams.recordTypes = this.recordTypes.value;
-      shouldResetPagination = true;
-    } else {
-      queryParams.recordTypes = null;
-    }
-
-    if (!isEmpty(this.fromDtm.value) && this.timePeriodFilterIsChecked) {
-      queryParams.fromDtm = this.fromDtm.value;
-      shouldResetPagination = true;
-    } else {
-      queryParams.fromDtm = null;
-    }
-
-    if (!isEmpty(this.toDtm.value) && this.timePeriodFilterIsChecked) {
-      queryParams.toDtm = this.toDtm.value;
-      shouldResetPagination = true;
-    } else {
-      queryParams.toDtm = null;
-    }
-
-    if (shouldResetPagination) {
-      queryParams.pageNo = 0;
-    }
-
+    // Setting a query param to null, will remove the param if it exists
     const navigationExtras: NavigationExtras = {
       queryParamsHandling: 'merge',
-      queryParams
+      queryParams: {
+        recordTypes: null,
+        fromDtm: null,
+        toDtm: null,
+        pageNo: 0
+      }
     };
 
+    // Refresh route with updated query parameters based on configuration form
+    if (this.shouldFilterByRecordType.value && !isEmpty(this.recordTypes.value)) {
+      navigationExtras.queryParams.recordTypes = this.recordTypes.value;
+    }
+    if (this.shouldFilterByDtm.value) {
+      if (!isEmpty(this.fromDtm.value)) {
+        navigationExtras.queryParams.fromDtm = this.fromDtm.value;
+      }
+      if (!isEmpty(this.toDtm.value)) {
+        navigationExtras.queryParams.toDtm = this.toDtm.value;
+      }
+    }
     this.router.navigate(["/history"], navigationExtras);
+
+    // Reset filters but leave filter panels open
+    this.recordTypes.reset();
+    this.fromDtm.reset();
+    this.toDtm.reset();
   }
 
 }

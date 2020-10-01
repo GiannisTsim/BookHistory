@@ -1,8 +1,8 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { MatPaginator, PageEvent } from "@angular/material/paginator";
+import { Component, OnInit } from '@angular/core';
+import { PageEvent } from "@angular/material/paginator";
 import { Sort } from "@angular/material/sort";
-import { ActivatedRoute, NavigationExtras, ParamMap, Router } from "@angular/router";
-import { filter, switchMap } from "rxjs/operators";
+import { ActivatedRoute, NavigationExtras, Router } from "@angular/router";
+import { switchMap } from "rxjs/operators";
 
 import { BookService } from "../../core/services/book.service";
 import { HistorySearchResult } from "src/app/models/history-search-result.model";
@@ -28,19 +28,19 @@ export class HistoryChangeTableComponent implements OnInit {
 
   historySearchResult: HistorySearchResult;
 
-  sortOrder: Order = Order.Desc;
-
-  paramMap: ParamMap;
-
-  @ViewChild(MatPaginator) paginator: MatPaginator;
+  order: Order;
+  pageNo: number;
+  pageSize: number;
 
   constructor(private router: Router, private route: ActivatedRoute, private bookService: BookService) { }
 
   ngOnInit(): void {
     this.route.queryParamMap.pipe(
-      filter(paramMap => paramMap.keys.length !== 0),
-      switchMap(param => {
-        return this.bookService.searchHistory(param);
+      switchMap(paramMap => {
+        this.pageNo = parseInt(paramMap.get(HistoryQueryParam.PageNo), 10);
+        this.pageSize = parseInt(paramMap.get(HistoryQueryParam.PageSize), 10);
+        this.order = paramMap.get(HistoryQueryParam.Order) as Order;
+        return this.bookService.searchHistory(paramMap);
       }))
       .subscribe(historySearchResult => {
         this.historySearchResult = historySearchResult;
@@ -52,10 +52,8 @@ export class HistoryChangeTableComponent implements OnInit {
       queryParamsHandling: 'merge',
     };
 
-    const currentSortOrder = this.route.snapshot.queryParamMap.get("order");
-
-    if (event.direction !== currentSortOrder) {
-      navigationExtras.queryParams = { order: event.direction };
+    if (event.direction !== this.order) {
+      navigationExtras.queryParams = { pageNo: 0, order: event.direction };
     }
 
     this.router.navigate(["/history"], navigationExtras);
@@ -66,14 +64,10 @@ export class HistoryChangeTableComponent implements OnInit {
       queryParamsHandling: 'merge',
     };
 
-    const currentPageSize = parseInt(this.route.snapshot.queryParamMap.get(HistoryQueryParam.PageSize), 10);
-    const currentPageNo = parseInt(this.route.snapshot.queryParamMap.get(HistoryQueryParam.PageNo), 10);
-
-    if (event.pageSize !== currentPageSize) {
-      this.paginator.firstPage();
+    if (event.pageSize !== this.pageSize) {
       navigationExtras.queryParams = { pageNo: 0, pageSize: event.pageSize };
     }
-    else if (event.pageIndex !== currentPageNo) {
+    else if (event.pageIndex !== this.pageNo) {
       navigationExtras.queryParams = { pageNo: event.pageIndex };
     }
 

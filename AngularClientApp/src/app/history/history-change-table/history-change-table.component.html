@@ -5,7 +5,7 @@
 <ng-template #tableContainer>
     <div id="table-container">
         <table mat-table [dataSource]="historySearchResult.historyRecords" matSort
-            (matSortChange)="onSortOrderChange($event)" matSortActive="updatedDtm" [matSortDirection]="sortOrder"
+            (matSortChange)="onSortOrderChange($event)" matSortActive="updatedDtm" [matSortDirection]="order"
             matSortDisableClear class="mat-elevation-z8">
 
             <!-- Book ID Column -->
@@ -34,8 +34,8 @@
         </table>
     </div>
 
-    <mat-paginator [length]="historySearchResult.totalCount" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]"
-        (page)="onPageEvent($event)">
+    <mat-paginator [length]="historySearchResult.totalCount" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]"
+        (page)="onPageEvent($event)" [pageIndex]="pageNo">
     </mat-paginator>
 </ng-template>
 
