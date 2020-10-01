@@ -30,10 +30,9 @@ export class BookService {
   }
 
   editBook(bookId: number, bookDetail: BookDetail): Observable<BookDetail> {
-    // return this.http.put<BookDetail>(`${environment.apiUrl}/books/${bookId}`, bookDetail);
     return this.http.put<BookDetail>(`${environment.apiUrl}/books/${bookId}`, bookDetail).pipe(
       tap(bookDetail => {
-        this.updatedBookSubject.next(bookDetail as Book);
+        this.updatedBookSubject.next({ bookId: bookDetail.bookId, title: bookDetail.title, publishDate: bookDetail.publishDate });
       })
     );
 

@@ -310,7 +310,7 @@ CREATE OR ALTER PROCEDURE Book_Modify_tr
     @NewTitle NVARCHAR(100),
     @NewDescription NVARCHAR(256),
     @NewPublishDate DATE,
-    @NewAuthors AUTHORTABLETYPE READONLY
+    @NewAuthors AuthorTableType READONLY
 AS
 SET NOCOUNT ON;
 BEGIN TRANSACTION
@@ -366,18 +366,22 @@ IF (@NewTitle <> @Title OR @NewDescription <> @Description OR @NewPublishDate <>
 
 END
 
+-- Cleanup new Authors: keep unique and non whitespace
+DECLARE @SanitizedNewAuthors AuthorTableType;
+INSERT INTO @SanitizedNewAuthors SELECT DISTINCT * FROM @NewAuthors WHERE Author <> N'' AND Author IS NOT NULL;
+
 -- Insert new Authors
 INSERT INTO Author 
         (Author)
 SELECT  Author
-FROM    @NewAuthors
+FROM    @SanitizedNewAuthors
 WHERE   Author NOT IN ( SELECT Author FROM Author );
 
 -- Insert new BookAuthors
 INSERT INTO BookAuthor 
         (BookId, Author, IsObsolete, UpdatedDtm)
 SELECT  @BookId, Author, 0, @AuditedDtm
-FROM    @NewAuthors
+FROM    @SanitizedNewAuthors
 WHERE   Author NOT IN ( SELECT Author FROM BookAuthor WHERE BookId=@BookId );
 
 -- Insert new BookAuthorHistory
@@ -388,9 +392,9 @@ SELECT
 FROM    BookAuthor
 WHERE   BookId = @BookId 
 AND ( 
-        (Author IN (SELECT * FROM @NewAuthors) AND IsObsolete = 1)
+        (Author IN (SELECT * FROM @SanitizedNewAuthors) AND IsObsolete = 1)
         OR
-        (Author NOT IN (SELECT * FROM @NewAuthors) AND IsObsolete = 0)
+        (Author NOT IN (SELECT * FROM @SanitizedNewAuthors) AND IsObsolete = 0)
     )
 
 -- Restore BookAuthors
@@ -398,7 +402,7 @@ UPDATE  BookAuthor
 SET     IsObsolete=0,
         UpdatedDtm = @AuditedDtm
 WHERE   BookId=@BookId
-AND     Author IN ( SELECT Author FROM @NewAuthors)
+AND     Author IN ( SELECT Author FROM @SanitizedNewAuthors)
 AND     IsObsolete = 1;
 
 --Soft-delete BookAuthors
@@ -406,7 +410,7 @@ UPDATE  BookAuthor
 SET     IsObsolete=1,
         UpdatedDtm = @AuditedDtm
 WHERE   BookId=@BookId
-AND     Author NOT IN ( SELECT Author FROM @NewAuthors)
+AND     Author NOT IN ( SELECT Author FROM @SanitizedNewAuthors)
 AND     IsObsolete = 0;
 
 COMMIT

@@ -43,9 +43,8 @@ export class BookDetailComponent implements OnInit {
     this.bookService.editBook(this.bookDetail.bookId, this.bookForm.value as BookDetail)
       .subscribe(
         (bookDetail) => {
-          // TODO: communicate change through shared service, cannot use event emmiter because this is a routed component
           this.bookDetail = bookDetail;
-          this.bookForm.markAsPristine();
+          this.resetForm();
         },
         error => console.log(error)
       );
@@ -68,9 +67,5 @@ export class BookDetailComponent implements OnInit {
   removeAuthor(index: number) {
     this.authorsFormArray.removeAt(index);
     this.bookForm.markAsDirty();
-  }
-
-  onAuthorBlur(index: number) {
-    this.authorsFormArray.at(index).value.trim() === "" && this.removeAuthor(index);
   }
 }

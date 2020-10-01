@@ -29,8 +29,7 @@
 
                 <div *ngFor="let author of authorsFormArray.controls; let i=index">
                     <mat-form-field>
-                        <input (keydown.enter)="$event.target.blur()" matInput [formControlName]="i"
-                            (blur)="onAuthorBlur(i)">
+                        <input matInput [formControlName]="i">
                     </mat-form-field>
                     <button type="button" mat-icon-button (click)="removeAuthor(i)" color="warn">
                         <mat-icon>clear</mat-icon>
