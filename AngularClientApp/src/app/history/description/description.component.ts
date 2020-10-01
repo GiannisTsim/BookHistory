@@ -28,20 +28,12 @@ export class DescriptionComponent implements OnInit {
   constructor(private route: ActivatedRoute) { }
 
   ngOnInit(): void {
-
-
     this.route.queryParamMap
       .subscribe(paramMap => {
         this.bookId = parseInt(paramMap.get(HistoryQueryParam.BookId), 10);
         this.recordTypes = paramMap.getAll(HistoryQueryParam.RecordTypes);
         this.fromDtm = paramMap.get(HistoryQueryParam.FromDtm);
         this.toDtm = paramMap.get(HistoryQueryParam.ToDtm);
-
-        console.log(this.bookId);
-        console.log(this.recordTypes);
-        console.log(this.fromDtm);
-        console.log(this.toDtm);
-
       });
   }
 
