@@ -11,11 +11,11 @@ import { Order } from "src/app/models/order.enum";
 import { HistoryQueryParam } from "src/app/models/history-query-param.enum";
 
 @Component({
-  selector: 'app-history-change-table',
-  templateUrl: './history-change-table.component.html',
-  styleUrls: ['./history-change-table.component.css']
+  selector: 'app-history-record-table',
+  templateUrl: './history-record-table.component.html',
+  styleUrls: ['./history-record-table.component.css']
 })
-export class HistoryChangeTableComponent implements OnInit {
+export class HistoryRecordTableComponent implements OnInit {
   displayedColumns: string[] = ['bookId', 'updatedDtm', 'description'];
 
   recordTypeDescription = {

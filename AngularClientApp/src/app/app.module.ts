@@ -21,13 +21,15 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatSortModule } from '@angular/material/sort';
+import { MatChipsModule } from '@angular/material/chips';
 
 import { BooksComponent } from "./books/books.component";
 import { BookDetailComponent } from './books/book-detail/book-detail.component';
 import { HistoryComponent } from "./history/history.component";
 import { PageNotFoundComponent } from "./page-not-found/page-not-found.component";
 import { ConfigurationComponent } from './history/configuration/configuration.component';
-import { HistoryChangeTableComponent } from './history/history-change-table/history-change-table.component';
+import { HistoryRecordTableComponent } from './history/history-record-table/history-record-table.component';
+import { DescriptionComponent } from './history/description/description.component';
 
 @NgModule({
   declarations: [
@@ -37,7 +39,8 @@ import { HistoryChangeTableComponent } from './history/history-change-table/hist
     PageNotFoundComponent,
     BookDetailComponent,
     ConfigurationComponent,
-    HistoryChangeTableComponent,
+    HistoryRecordTableComponent,
+    DescriptionComponent,
   ],
   imports: [
     BrowserModule,
@@ -58,7 +61,8 @@ import { HistoryChangeTableComponent } from './history/history-change-table/hist
     MatSlideToggleModule,
     MatTableModule,
     MatPaginatorModule,
-    MatSortModule
+    MatSortModule,
+    MatChipsModule
   ],
   providers: [],
   bootstrap: [AppComponent],

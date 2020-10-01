@@ -1,7 +1,7 @@
 export enum HistoryQueryParam {
     BookId = "bookId",
     FromDtm = "fromDtm",
-    ToDtm = "ToDtm",
+    ToDtm = "toDtm",
     RecordTypes = "recordTypes",
     PageNo = "pageNo",
     PageSize = "pageSize",

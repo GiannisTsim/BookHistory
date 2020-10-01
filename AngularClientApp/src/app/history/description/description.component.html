@@ -1,0 +1,29 @@
+<div id="container">
+    <h3>History Records</h3>
+
+    <div *ngIf="bookId">
+        <b>Book ID</b>
+        <p>{{bookId}}</p>
+    </div>
+
+    <div id="chip-list-container" *ngIf="recordTypes && recordTypes.length !== 0">
+        <mat-chip-list>
+            <mat-chip *ngFor="let recordType of recordTypes">
+                <mat-icon>{{recordTypeDescription[recordType].icon}}</mat-icon>
+                {{recordTypeDescription[recordType].text}}
+            </mat-chip>
+        </mat-chip-list>
+    </div>
+
+    <div *ngIf="fromDtm">
+        <b>From</b>
+        <p>{{fromDtm | date:"medium"}}</p>
+    </div>
+
+    <div *ngIf="toDtm">
+        <b>Until</b>
+        <p>{{toDtm | date:"medium"}}</p>
+    </div>
+
+    <hr>
+</div>
