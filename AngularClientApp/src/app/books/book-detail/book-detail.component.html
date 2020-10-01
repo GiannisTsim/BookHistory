@@ -49,6 +49,6 @@
     <div id="changelog-info-container">
         <div>Last updated at {{bookDetail.updatedDtm | date:"medium"}}</div>
         <button mat-button routerLink="/history" queryParamsHandling="merge"
-            [queryParams]="{bookId: bookDetail.bookId, pageNo: 0, pageSize: 10}">See changelog</button>
+            [queryParams]="{bookId: bookDetail.bookId, pageNo: 0, pageSize: 10, order: 'desc'}">See changelog</button>
     </div>
 </div>

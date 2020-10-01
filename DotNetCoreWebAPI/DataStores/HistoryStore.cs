@@ -43,7 +43,7 @@ namespace DotNetCoreWebAPI.DataStores
             }
             if (queryParams.ToDtm != null)
             {
-                dnamicParams.Add("ToDtm", queryParams.ToDtm, DbType.Int32, ParameterDirection.Input);
+                dnamicParams.Add("ToDtm", queryParams.ToDtm, DbType.DateTime, ParameterDirection.Input);
             }
             if (queryParams.RecordTypes != null && queryParams.RecordTypes.Any())
             {

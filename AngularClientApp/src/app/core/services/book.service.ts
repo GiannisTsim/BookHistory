@@ -6,10 +6,10 @@ import { Observable, Subject } from "rxjs";
 import { tap } from "rxjs/operators";
 import { environment } from "src/environments/environment";
 
-import { Book } from "../models/book.model";
-import { BookDetail } from "../models/book-detail.model";
-import { HistoryQueryParam } from "../models/history-query-param.enum";
-import { HistorySearchResult } from "../models/history-search-result.model";
+import { Book } from "../../models/book.model";
+import { BookDetail } from "../../models/book-detail.model";
+import { HistoryQueryParam } from "../../models/history-query-param.enum";
+import { HistorySearchResult } from "../../models/history-search-result.model";
 
 @Injectable({
   providedIn: 'root'

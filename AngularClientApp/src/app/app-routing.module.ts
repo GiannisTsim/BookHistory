@@ -5,6 +5,7 @@ import { BooksComponent } from "./books/books.component";
 import { BookDetailComponent } from "./books/book-detail/book-detail.component";
 import { HistoryComponent } from "./history/history.component";
 import { PageNotFoundComponent } from "./page-not-found/page-not-found.component";
+import { HistoryQueryParamsGuard } from "./core/guards/history-query-params.guard";
 
 const routes: Routes = [
   { path: "", redirectTo: "/books", pathMatch: "full" },
@@ -13,7 +14,7 @@ const routes: Routes = [
       { path: ":bookId", component: BookDetailComponent }
     ]
   },
-  { path: "history", component: HistoryComponent },
+  { path: "history", component: HistoryComponent, canActivate: [HistoryQueryParamsGuard] },
   { path: "**", component: PageNotFoundComponent },
 ];
 

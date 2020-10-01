@@ -3,7 +3,7 @@ import { FormArray, FormControl, FormGroup } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
 import { switchMap } from "rxjs/operators";
 
-import { BookService } from "src/app/core/book.service";
+import { BookService } from "src/app/core/services/book.service";
 import { BookDetail } from "src/app/models/book-detail.model";
 
 @Component({

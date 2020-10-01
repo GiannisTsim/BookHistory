@@ -4,7 +4,7 @@ import { Sort } from "@angular/material/sort";
 import { ActivatedRoute, NavigationExtras, ParamMap, Router } from "@angular/router";
 import { filter, switchMap } from "rxjs/operators";
 
-import { BookService } from "../../core/book.service";
+import { BookService } from "../../core/services/book.service";
 import { HistorySearchResult } from "src/app/models/history-search-result.model";
 import { RecordType } from "src/app/models/record-type.enum";
 import { Order } from "src/app/models/order.enum";
