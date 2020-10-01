@@ -1,29 +1,31 @@
-<div *ngIf="historyChanges && historyChanges.length !== 0; then tableContainer else emptyResultBlock">
+<div
+    *ngIf="historySearchResult && historySearchResult.historyRecords.length !== 0; then tableContainer else emptyResultBlock">
 </div>
 
 <ng-template #tableContainer>
     <div id="table-container">
-        <table mat-table [dataSource]="historyChanges" matSort (matSortChange)="onSortOrderChange($event)"
-            matSortActive="updatedDtm" [matSortDirection]="sortOrder" matSortDisableClear class="mat-elevation-z8">
+        <table mat-table [dataSource]="historySearchResult.historyRecords" matSort
+            (matSortChange)="onSortOrderChange($event)" matSortActive="updatedDtm" [matSortDirection]="sortOrder"
+            matSortDisableClear class="mat-elevation-z8">
 
             <!-- Book ID Column -->
             <ng-container matColumnDef="bookId">
                 <th mat-header-cell *matHeaderCellDef> Book ID </th>
-                <td mat-cell *matCellDef="let historyChange"> {{historyChange.bookId}} </td>
+                <td mat-cell *matCellDef="let historyRecord"> {{historyRecord.bookId}} </td>
             </ng-container>
 
             <!-- Updated At Column -->
             <ng-container matColumnDef="updatedDtm">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header>
                     Updated At </th>
-                <td mat-cell *matCellDef="let historyChange"> {{historyChange.updatedDtm | date:"medium"}} </td>
+                <td mat-cell *matCellDef="let historyRecord"> {{historyRecord.updatedDtm | date:"medium"}} </td>
             </ng-container>
 
             <!-- Description Column -->
             <ng-container matColumnDef="description">
                 <th mat-header-cell *matHeaderCellDef> Description </th>
-                <td mat-cell *matCellDef="let historyChange">
-                    {{historyTypeDescription[historyChange.historyType]}} : {{historyChange.change}}
+                <td mat-cell *matCellDef="let historyRecord">
+                    {{recordTypeDescription[historyRecord.recordType]}} : {{historyRecord.change}}
                 </td>
             </ng-container>
 
@@ -32,7 +34,7 @@
         </table>
     </div>
 
-    <mat-paginator [length]="totalCount" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]"
+    <mat-paginator [length]="historySearchResult.totalCount" [pageSize]="10" [pageSizeOptions]="[5, 10, 25, 100]"
         (page)="onPageEvent($event)">
     </mat-paginator>
 </ng-template>

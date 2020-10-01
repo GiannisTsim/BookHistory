@@ -20,62 +20,61 @@ namespace DotNetCoreWebAPI.DataStores
             _connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
-        public async Task<IEnumerable<History>> FindAsync(HistoryQueryParams queryParams)
+        public async Task<HistorySearchResult> SearchAndCountTotalAsync(HistoryQueryParams queryParams)
         {
-            var historyTypesDataTable = new DataTable();
-            historyTypesDataTable.Columns.Add("HistoryType", typeof(int));
-            if (queryParams.HistoryTypes != null)
+            var recordTypesDataTable = new DataTable();
+            recordTypesDataTable.Columns.Add("RecordType", typeof(int));
+            if (queryParams.RecordTypes != null)
             {
-                foreach (int historyType in queryParams.HistoryTypes)
+                foreach (int recordType in queryParams.RecordTypes)
                 {
-                    historyTypesDataTable.Rows.Add(historyType);
+                    recordTypesDataTable.Rows.Add(recordType);
                 }
             }
 
-            using SqlConnection connection = new SqlConnection(_connectionString);
-            await connection.OpenAsync();
-            var history = await connection.QueryAsync<History>(
-                "BookHistory_Search",
-                new
-                {
-                    queryParams.BookId,
-                    queryParams.FromDtm,
-                    queryParams.ToDtm,
-                    HistoryTypes = historyTypesDataTable.AsTableValuedParameter("HistoryTypeTableType"),
-                    queryParams.PageNo,
-                    queryParams.PageSize,
-                    queryParams.Order
-                },
-                commandType: CommandType.StoredProcedure);
-            return history;
-        }
-
-
-        public async Task<int> CountAsync(HistoryQueryParams queryParams)
-        {
-            var historyTypesDataTable = new DataTable();
-            historyTypesDataTable.Columns.Add("HistoryType", typeof(int));
-            if (queryParams.HistoryTypes != null)
+            var dnamicParams = new DynamicParameters();
+            if (queryParams.BookId != null)
             {
-                foreach (int historyType in queryParams.HistoryTypes)
-                {
-                    historyTypesDataTable.Rows.Add(historyType);
-                }
+                dnamicParams.Add("BookId", queryParams.BookId, DbType.Int32, ParameterDirection.Input);
+            }
+            if (queryParams.FromDtm != null)
+            {
+                dnamicParams.Add("FromDtm", queryParams.FromDtm, DbType.DateTime, ParameterDirection.Input);
+            }
+            if (queryParams.ToDtm != null)
+            {
+                dnamicParams.Add("ToDtm", queryParams.ToDtm, DbType.Int32, ParameterDirection.Input);
+            }
+            if (queryParams.RecordTypes != null && queryParams.RecordTypes.Any())
+            {
+                dnamicParams.Add("RecordTypes", recordTypesDataTable.AsTableValuedParameter("RecordTypeTableType"));
+            }
+            if(queryParams.PageNo != null)
+            {
+                dnamicParams.Add("PageNo", queryParams.PageNo, DbType.Int32, ParameterDirection.Input);
+            }
+            if (queryParams.PageSize != null)
+            {
+                dnamicParams.Add("PageSize", queryParams.PageSize, DbType.Int32, ParameterDirection.Input);
+            }
+            if (!String.IsNullOrWhiteSpace(queryParams.Order))
+            {
+                dnamicParams.Add("Order", queryParams.Order, DbType.String, ParameterDirection.Input);
             }
 
+            dnamicParams.Add("TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            HistorySearchResult historySearchResult = new HistorySearchResult();
             using SqlConnection connection = new SqlConnection(_connectionString);
             await connection.OpenAsync();
-            var count = await connection.QuerySingleOrDefaultAsync<int>(
-                "BookHistory_Count",
-                new
-                {
-                    queryParams.BookId,
-                    queryParams.FromDtm,
-                    queryParams.ToDtm,
-                    HistoryTypes = historyTypesDataTable.AsTableValuedParameter("HistoryTypeTableType")
-                },
-                commandType: CommandType.StoredProcedure);
-            return count;
+            historySearchResult.HistoryRecords = (await connection.QueryAsync<HistoryRecord>(
+                "BookHistory_SearchAndCountTotal",
+                dnamicParams,
+                commandType: CommandType.StoredProcedure)).ToList();
+
+            historySearchResult.TotalCount = dnamicParams.Get<int>("TotalCount");
+
+            return historySearchResult;
         }
     }
 }

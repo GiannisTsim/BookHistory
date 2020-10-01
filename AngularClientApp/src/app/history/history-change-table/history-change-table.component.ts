@@ -2,12 +2,13 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatPaginator, PageEvent } from "@angular/material/paginator";
 import { Sort } from "@angular/material/sort";
 import { ActivatedRoute, NavigationExtras, ParamMap, Router } from "@angular/router";
-import { isEqual } from "lodash-es";
 import { filter, switchMap } from "rxjs/operators";
 
 import { BookService } from "../../core/book.service";
-import { HistoryChange, HistoryType } from "../../models/history-change.model";
-import { Order } from "src/app/models/history-query-params.model";
+import { HistorySearchResult } from "src/app/models/history-search-result.model";
+import { RecordType } from "src/app/models/record-type.enum";
+import { Order } from "src/app/models/order.enum";
+import { HistoryQueryParam } from "src/app/models/history-query-param.enum";
 
 @Component({
   selector: 'app-history-change-table',
@@ -17,17 +18,15 @@ import { Order } from "src/app/models/history-query-params.model";
 export class HistoryChangeTableComponent implements OnInit {
   displayedColumns: string[] = ['bookId', 'updatedDtm', 'description'];
 
-  historyTypeDescription = {
-    [HistoryType.Title]: "Title changed",
-    [HistoryType.Description]: "Description changed",
-    [HistoryType.PublishDate]: "Publish date changed",
-    [HistoryType.AuthorAdd]: "Author added",
-    [HistoryType.AuthorDrop]: "Author removed",
+  recordTypeDescription = {
+    [RecordType.Title]: "Title changed",
+    [RecordType.Description]: "Description changed",
+    [RecordType.PublishDate]: "Publish date changed",
+    [RecordType.AuthorAdd]: "Author added",
+    [RecordType.AuthorDrop]: "Author removed",
   };
 
-  historyChanges: HistoryChange[] = [];
-
-  totalCount: number;
+  historySearchResult: HistorySearchResult;
 
   sortOrder: Order = Order.Desc;
 
@@ -41,25 +40,10 @@ export class HistoryChangeTableComponent implements OnInit {
     this.route.queryParamMap.pipe(
       filter(paramMap => paramMap.keys.length !== 0),
       switchMap(param => {
-        return this.bookService.getHistoryChanges(param);
+        return this.bookService.searchHistory(param);
       }))
-      .subscribe(historyChanges => {
-        this.historyChanges = historyChanges;
-      });
-
-    this.route.queryParamMap.pipe(
-      filter(paramMap => {
-        return paramMap.get("bookId") !== this.paramMap?.get("bookId") ||
-          paramMap.get("fromDtm") !== this.paramMap?.get("fromDtm") ||
-          paramMap.get("toDtm") !== this.paramMap?.get("toDtm") ||
-          !isEqual(paramMap.getAll("historyTypes"), this.paramMap?.getAll("historyTypes"));
-      }),
-      switchMap(paramMap => {
-        this.paramMap = paramMap;
-        return this.bookService.getHistoryCount(paramMap);
-      }))
-      .subscribe(count => {
-        this.totalCount = count;
+      .subscribe(historySearchResult => {
+        this.historySearchResult = historySearchResult;
       });
   }
 
@@ -82,8 +66,8 @@ export class HistoryChangeTableComponent implements OnInit {
       queryParamsHandling: 'merge',
     };
 
-    const currentPageSize = parseInt(this.route.snapshot.queryParamMap.get("pageSize"), 10);
-    const currentPageNo = parseInt(this.route.snapshot.queryParamMap.get("pageNo"), 10);
+    const currentPageSize = parseInt(this.route.snapshot.queryParamMap.get(HistoryQueryParam.PageSize), 10);
+    const currentPageNo = parseInt(this.route.snapshot.queryParamMap.get(HistoryQueryParam.PageNo), 10);
 
     if (event.pageSize !== currentPageSize) {
       this.paginator.firstPage();

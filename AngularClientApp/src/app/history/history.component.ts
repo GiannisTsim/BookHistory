@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, NavigationExtras, Router } from "@angular/router";
 
-import { Order } from "../models/history-query-params.model";
+import { Order } from "../models/order.enum";
 
 @Component({
   selector: 'app-history',

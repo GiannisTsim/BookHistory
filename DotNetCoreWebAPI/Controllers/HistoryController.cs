@@ -23,19 +23,10 @@ namespace DotNetCoreWebAPI.Controllers
 
         [HttpGet("api/history")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<History>>> GetHistory([FromQuery] HistoryQueryParams queryParams)
+        public async Task<ActionResult<HistorySearchResult>> GetHistory([FromQuery] HistoryQueryParams queryParams)
         {
-            IEnumerable<History> history = await _historyStore.FindAsync(queryParams);
-            return Ok(history);
-        }
-
-
-        [HttpGet("api/history/count")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<int>> GetHistoryCount([FromQuery] HistoryQueryParams queryParams)
-        {
-            int count = await _historyStore.CountAsync(queryParams);
-            return Ok(count);
+            HistorySearchResult result = await _historyStore.SearchAndCountTotalAsync(queryParams);
+            return Ok(result);
         }
 
     }

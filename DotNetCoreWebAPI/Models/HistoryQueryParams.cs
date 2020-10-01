@@ -14,7 +14,7 @@ namespace DotNetCoreWebAPI.Models
 
         public DateTime? ToDtm { get; set; }
 
-        public List<int> HistoryTypes { get; set; }
+        public List<int> RecordTypes { get; set; }
 
         public int? PageNo { get; set; }
 

@@ -19,12 +19,11 @@ GO
 
 
 DROP PROCEDURE IF EXISTS Book_Modify_tr;
-DROP PROCEDURE IF EXISTS BookHistory_Search;
-DROP PROCEDURE IF EXISTS BookHistory_Count;
+DROP PROCEDURE IF EXISTS BookHistory_SearchAndCountTotal
 GO
 
 DROP TYPE IF EXISTS AuthorTableType; 
-DROP TYPE IF EXISTS HistoryTypeTableType;
+DROP TYPE IF EXISTS RecordTypeTableType;
 GO
 
 DROP VIEW IF EXISTS BookHistoryTitle_V;
@@ -190,9 +189,9 @@ CREATE TYPE AuthorTableType
     );
 GO
 
-CREATE TYPE HistoryTypeTableType 
+CREATE TYPE RecordTypeTableType 
     AS TABLE (
-    HistoryType INT
+    RecordType INT
     );
 GO
 
@@ -214,13 +213,13 @@ AS
 SELECT * FROM (
     SELECT  B.BookId, 
             ( SELECT MAX(AuditedDtm) FROM BookHistoryTitle WHERE B.BookId = BookId ) AS UpdatedDtm,  
-            1 AS HistoryType, 
+            1 AS RecordType, 
             B.Title AS Change
     FROM Book AS B
     UNION  
     SELECT  BHT.BookId, 
             ( SELECT MAX(AuditedDtm) FROM BookHistoryTitle WHERE BHT.BookId = BookId AND BHT.AuditedDtm > AuditedDtm ) AS UpdatedDtm, 
-            1 AS HistoryType, 
+            1 AS RecordType, 
             BHT.Title AS Change 
     FROM BookHistoryTitle AS BHT
     ) AS HT
@@ -233,13 +232,13 @@ AS
 SELECT * FROM (
     SELECT  B.BookId, 
             ( SELECT MAX(AuditedDtm) FROM BookHistoryDescription WHERE B.BookId = BookId ) AS UpdatedDtm,  
-            2 AS HistoryType, 
+            2 AS RecordType, 
             B.Description AS Change
     FROM Book AS B
     UNION  
     SELECT  BHD.BookId, 
             ( SELECT MAX(AuditedDtm) FROM BookHistoryDescription WHERE BHD.BookId = BookId AND BHD.AuditedDtm > AuditedDtm ) AS UpdatedDtm, 
-            2 AS HistoryType, 
+            2 AS RecordType, 
             BHD.Description AS Change 
     FROM BookHistoryDescription AS BHD
     ) AS HD
@@ -252,13 +251,13 @@ AS
 SELECT * FROM (
     SELECT  B.BookId, 
             ( SELECT MAX(AuditedDtm) FROM BookHistoryPublishDate WHERE B.BookId = BookId ) AS UpdatedDtm,  
-            3 AS HistoryType, 
+            3 AS RecordType, 
             CAST(B.PublishDate AS NVARCHAR) AS Change
     FROM Book AS B
     UNION  
     SELECT  BHPD.BookId, 
             ( SELECT MAX(AuditedDtm) FROM BookHistoryPublishDate WHERE BHPD.BookId = BookId AND BHPD.AuditedDtm > AuditedDtm ) AS UpdatedDtm, 
-            3 AS HistoryType, 
+            3 AS RecordType, 
             CAST(BHPD.PublishDate AS NVARCHAR) AS Change 
     FROM BookHistoryPublishDate AS BHPD
     ) AS HPD
@@ -269,18 +268,18 @@ GO
 CREATE OR ALTER VIEW BookAuthorHistoryAdd_V
 AS
 -- Not obsolete Authors added again after they have been removed
-SELECT BookAuthor.BookId, BookAuthor.UpdatedDtm,  4 AS HistoryType, BookAuthor.Author AS Change
+SELECT BookAuthor.BookId, BookAuthor.UpdatedDtm,  4 AS RecordType, BookAuthor.Author AS Change
 FROM BookAuthor INNER JOIN BookAuthorHistory ON BookAuthor.BookId = BookAuthorHistory.BookId AND BookAuthor.Author = BookAuthorHistory.Author AND BookAuthor.UpdatedDtm = BookAuthorHistory.AuditedDtm
 WHERE BookAuthor.IsObsolete = 0
 UNION  
 -- Previous Author additions for Authors that are currently obsolete, excluding initial Authors
-SELECT BookId, UpdatedDtm, 4 AS HistoryType, Author AS Change 
+SELECT BookId, UpdatedDtm, 4 AS RecordType, Author AS Change 
 FROM BookAuthorHistory AS BAH 
 WHERE IsObsolete = 0 
 AND EXISTS (SELECT 1 FROM BookAuthorHistory WHERE BookId = BAH.BookId AND Author = BAH.Author AND AuditedDtm = BAH.UpdatedDtm AND IsObsolete = 1)
 UNION
 -- Authors added after initial insert, that have not been removed until now
-SELECT BookId, UpdatedDtm, 4 AS HistoryType, Author AS Change 
+SELECT BookId, UpdatedDtm, 4 AS RecordType, Author AS Change 
 FROM BookAuthor AS BA
 WHERE IsObsolete = 0 
 AND (
@@ -293,10 +292,10 @@ GO
 
 CREATE OR ALTER VIEW BookAuthorHistoryDrop_V
 AS
-SELECT BookId, UpdatedDtm,  5 AS HistoryType, Author AS Change
+SELECT BookId, UpdatedDtm,  5 AS RecordType, Author AS Change
 FROM BookAuthor WHERE IsObsolete = 1
 UNION  
-SELECT BookId, UpdatedDtm, 5 AS HistoryType, Author AS Change 
+SELECT BookId, UpdatedDtm, 5 AS RecordType, Author AS Change 
 FROM BookAuthorHistory WHERE IsObsolete = 1
 GO
 
@@ -413,18 +412,20 @@ AND     IsObsolete = 0;
 COMMIT
 GO
 
-
-CREATE OR ALTER PROCEDURE BookHistory_Search
+-- https://www.sqlservercentral.com/articles/optimising-server-side-paging-part-ii
+CREATE OR ALTER PROCEDURE BookHistory_SearchAndCountTotal
     @BookId         INT                             = NULL,     -- Get changes for this book only
     @FromDtm        DATETIME                        = NULL,     -- Get changes made on @FromDtm or later
     @ToDtm          DATETIME                        = NULL,     -- Get changes made on @ToDtm or earlier
-    @HistoryTypes   HistoryTypeTableType READONLY,              -- Get changes of the specified types, or any type if empty
+    @RecordTypes   RecordTypeTableType READONLY,              -- Get changes of the specified types, or any type if empty
     @PageNo         INT                             = NULL,
     @PageSize       INT                             = NULL,
-    @Order          NVARCHAR(4)                     = 'desc'    -- Ascending ('asc') or Descending ('desc') order by UpdatedDtm
+    @Order          NVARCHAR(4)                     = 'desc',    -- Ascending ('asc') or Descending ('desc') order by UpdatedDtm
+    @TotalCount     INT OUTPUT
 AS
+DECLARE @TblResult AS TABLE (BookId INT, UpdatedDtm DATETIME, RecordType INT, Change NVARCHAR(MAX), TotalCount INT);
 
-SELECT * FROM (
+INSERT INTO @TblResult SELECT BookId , UpdatedDtm , RecordType , Change, COUNT(*) OVER() AS TotalCount FROM (
     SELECT * FROM BookHistoryTitle_V 
     UNION
     SELECT * FROM BookHistoryDescription_V 
@@ -438,39 +439,16 @@ SELECT * FROM (
 WHERE   (History.BookId = @BookId OR @BookId IS NULL)
 AND     (History.UpdatedDtm >= @FromDtm OR @FromDtm IS NULL)
 AND     (History.UpdatedDtm <= @ToDtm OR @ToDtm IS NULL)
-AND     (History.HistoryType IN (SELECT HistoryType FROM @HistoryTypes) OR NOT EXISTS (SELECT 1 FROM @HistoryTypes))
+AND     (History.RecordType IN (SELECT RecordType FROM @RecordTypes) OR NOT EXISTS (SELECT 1 FROM @RecordTypes))
 ORDER BY    CASE WHEN @Order = 'desc' OR @Order IS NULL THEN History.UpdatedDtm END DESC, 
             CASE WHEN @Order='asc' THEN History.UpdatedDtm END ASC
 OFFSET      CASE WHEN @PageNo >= 0 AND @PageSize > 0 THEN @PageSize * @PageNo ELSE 0 END ROWS
 FETCH NEXT  CASE WHEN @PageSize > 0 THEN @PageSize ELSE 100 END ROWS ONLY
-OPTION (RECOMPILE)
-GO
+OPTION (RECOMPILE);
 
+SET @TotalCount = COALESCE((SELECT TOP 1 TotalCount FROM @TblResult), 0);
 
--- https://www.sqlservercentral.com/articles/optimising-server-side-paging-part-ii
-CREATE OR ALTER PROCEDURE BookHistory_Count
-    @BookId         INT                             = NULL,     -- Get changes for this book only
-    @FromDtm        DATETIME                        = NULL,     -- Get changes made on @FromDtm or later
-    @ToDtm          DATETIME                        = NULL,     -- Get changes made on @ToDtm or earlier
-    @HistoryTypes   HistoryTypeTableType READONLY               -- Get changes of the specified types, or any type if empty
-AS
-
-SELECT Count(*) FROM (
-    SELECT * FROM BookHistoryTitle_V 
-    UNION
-    SELECT * FROM BookHistoryDescription_V 
-    UNION
-    SELECT * FROM BookHistoryPublishDate_V
-    UNION
-    SELECT * FROM BookAuthorHistoryAdd_V
-    UNION
-    SELECT * FROM BookAuthorHistoryDrop_V
-) AS History
-WHERE   (History.BookId = @BookId OR @BookId IS NULL)
-AND     (History.UpdatedDtm >= @FromDtm OR @FromDtm IS NULL)
-AND     (History.UpdatedDtm <= @ToDtm OR @ToDtm IS NULL)
-AND     (History.HistoryType IN (SELECT HistoryType FROM @HistoryTypes) OR NOT EXISTS (SELECT 1 FROM @HistoryTypes))
-OPTION (RECOMPILE)
+SELECT BookId , UpdatedDtm , RecordType , Change FROM @TblResult;
 GO
 
 
@@ -485,11 +463,10 @@ GO
 
 CREATE ROLE BookHistoryRole;
 GRANT EXECUTE ON Book_Modify_tr TO BookHistoryRole;
-GRANT EXECUTE ON BookHistory_Search TO BookHistoryRole;
-GRANT EXECUTE ON BookHistory_Count TO BookHistoryRole;
+GRANT EXECUTE ON BookHistory_SearchAndCountTotal TO BookHistoryRole;
 GRANT SELECT ON SCHEMA::dbo TO BookHistoryRole;
 GRANT EXECUTE ON TYPE::AuthorTableType TO BookHistoryRole;
-GRANT EXECUTE ON TYPE::HistoryTypeTableType TO BookHistoryRole;
+GRANT EXECUTE ON TYPE::RecordTypeTableType TO BookHistoryRole;
 GO 
 
 CREATE LOGIN BookHistoryWebClient WITH PASSWORD = 'testpassword';

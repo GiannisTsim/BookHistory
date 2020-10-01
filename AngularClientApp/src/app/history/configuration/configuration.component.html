@@ -6,20 +6,20 @@
             Filter by type
         </mat-slide-toggle>
 
-        <mat-selection-list *ngIf="typeFilterIsChecked" dense disableRipple multiple formControlName="historyTypes">
-            <mat-list-option [value]="historyType.Title">
+        <mat-selection-list *ngIf="typeFilterIsChecked" dense disableRipple multiple formControlName="recordTypes">
+            <mat-list-option [value]="recordType.Title">
                 Title
             </mat-list-option>
-            <mat-list-option [value]="historyType.Description">
+            <mat-list-option [value]="recordType.Description">
                 Description
             </mat-list-option>
-            <mat-list-option [value]="historyType.PublishDate">
+            <mat-list-option [value]="recordType.PublishDate">
                 Publish date
             </mat-list-option>
-            <mat-list-option [value]="historyType.AuthorAdd">
+            <mat-list-option [value]="recordType.AuthorAdd">
                 Author addition
             </mat-list-option>
-            <mat-list-option [value]="historyType.AuthorDrop">
+            <mat-list-option [value]="recordType.AuthorDrop">
                 Author removal
             </mat-list-option>
         </mat-selection-list>

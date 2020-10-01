@@ -6,8 +6,8 @@ import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 
 import { Book, BookDetail } from "../models/book.model";
-import { HistoryChange } from "../models/history-change.model";
-import { HistoryQueryParams } from "../models/history-query-params.model";
+import { HistoryQueryParam } from "../models/history-query-param.enum";
+import { HistorySearchResult } from "../models/history-search-result.model";
 
 @Injectable({
   providedIn: 'root'
@@ -28,27 +28,19 @@ export class BookService {
     return this.http.put(`${environment.apiUrl}/books/${bookId}`, bookDetail);
   }
 
-  private buildHttpParams(paramMap: ParamMap) {
+  searchHistory(paramMap?: ParamMap): Observable<HistorySearchResult> {
     let httpParams = new HttpParams();
     paramMap.keys
       .filter(key => !isEmpty(paramMap.get(key)))
       .forEach(key => {
-        if (key === "historyTypes") {
-          paramMap.getAll("historyTypes").forEach(historyType => {
-            httpParams = httpParams.append(key, historyType);
+        if (key === HistoryQueryParam.RecordTypes) {
+          paramMap.getAll(HistoryQueryParam.RecordTypes).forEach(recordType => {
+            httpParams = httpParams.append(key, recordType);
           });
         } else {
           httpParams = httpParams.append(key, paramMap.get(key));
         }
       });
-    return httpParams;
-  }
-
-  getHistoryChanges(paramMap?: ParamMap): Observable<HistoryChange[]> {
-    return this.http.get<HistoryChange[]>(`${environment.apiUrl}/history`, { params: this.buildHttpParams(paramMap) });
-  }
-
-  getHistoryCount(paramMap?: ParamMap): Observable<number> {
-    return this.http.get<number>(`${environment.apiUrl}/history/count`, { params: this.buildHttpParams(paramMap) });
+    return this.http.get<HistorySearchResult>(`${environment.apiUrl}/history`, { params: httpParams });
   }
 }

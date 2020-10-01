@@ -3,8 +3,9 @@ import { AbstractControl, FormControl, FormGroup } from "@angular/forms";
 import { MatSlideToggleChange } from "@angular/material/slide-toggle";
 import { ActivatedRoute, NavigationExtras, Params, Router } from "@angular/router";
 import { isEmpty } from "lodash-es";
+import { HistoryQueryParam } from "src/app/models/history-query-param.enum";
 
-import { HistoryType } from "src/app/models/history-change.model";
+import { RecordType } from "src/app/models/record-type.enum";
 
 @Component({
   selector: 'app-configuration',
@@ -12,20 +13,20 @@ import { HistoryType } from "src/app/models/history-change.model";
   styleUrls: ['./configuration.component.css']
 })
 export class ConfigurationComponent implements OnInit {
-  historyType = HistoryType;
+  recordType = RecordType;
   typeFilterIsChecked: boolean = false;
   timePeriodFilterIsChecked: boolean = false;
 
   configForm = new FormGroup({
-    historyTypes: new FormControl([]),
+    recordTypes: new FormControl([]),
     toDtm: new FormControl(''),
     fromDtm: new FormControl(''),
   });
 
   constructor(private router: Router, private route: ActivatedRoute) { }
 
-  get historyTypes(): AbstractControl {
-    return this.configForm.get("historyTypes");
+  get recordTypes(): AbstractControl {
+    return this.configForm.get("recordTypes");
   }
 
   get fromDtm(): AbstractControl {
@@ -38,23 +39,23 @@ export class ConfigurationComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe(paramMap => {
-      if (paramMap.has("historyTypes")) {
+      if (paramMap.has(HistoryQueryParam.RecordTypes)) {
         this.typeFilterIsChecked = true;
-        this.historyTypes.setValue(paramMap.getAll("historyTypes").map(type => parseInt(type, 10)));
+        this.recordTypes.setValue(paramMap.getAll(HistoryQueryParam.RecordTypes));
       } else {
-        this.historyTypes.reset();
+        this.recordTypes.reset();
       }
 
-      if (paramMap.has("fromDtm")) {
+      if (paramMap.has(HistoryQueryParam.FromDtm)) {
         this.timePeriodFilterIsChecked = true;
-        this.fromDtm.setValue(paramMap.get("fromDtm"));
+        this.fromDtm.setValue(paramMap.get(HistoryQueryParam.FromDtm));
       } else {
         this.fromDtm.reset();
       }
 
-      if (paramMap.has("toDtm")) {
+      if (paramMap.has(HistoryQueryParam.ToDtm)) {
         this.timePeriodFilterIsChecked = true;
-        this.toDtm.setValue(paramMap.get("toDtm"));
+        this.toDtm.setValue(paramMap.get(HistoryQueryParam.ToDtm));
       } else {
         this.toDtm.reset();
       }
@@ -73,11 +74,11 @@ export class ConfigurationComponent implements OnInit {
     const queryParams: Params = {};
     let shouldResetPagination = false;
 
-    if (!isEmpty(this.historyTypes.value) && this.typeFilterIsChecked) {
-      queryParams.historyTypes = this.historyTypes.value;
+    if (!isEmpty(this.recordTypes.value) && this.typeFilterIsChecked) {
+      queryParams.recordTypes = this.recordTypes.value;
       shouldResetPagination = true;
     } else {
-      queryParams.historyTypes = null;
+      queryParams.recordTypes = null;
     }
 
     if (!isEmpty(this.fromDtm.value) && this.timePeriodFilterIsChecked) {
